@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import { jest } from '@jest/globals';
 
 const loggerMock = { info: jest.fn() };

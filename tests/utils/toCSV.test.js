@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 const { toCSV } = await import('../../src/utils/toCSV.js');
 
 describe('toCSV', () => {

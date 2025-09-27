@@ -98,6 +98,7 @@ describe('validate middleware (Joi)', () => {
           title: Joi.string(),
         },
       },
+      // eslint-disable-next-line prettier/prettier
       { stripUnknown: false },
     );
 
