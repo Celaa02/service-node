@@ -1,5 +1,9 @@
 #!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
+set -e
 
+echo "🔎 Lint..."
 npm run lint
-npm run test:cov
+
+echo "🧪 Tests (con cobertura)..."
+npm run test
+
