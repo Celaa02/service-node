@@ -1,28 +1,27 @@
-import jwt from 'jsonwebtoken'
-import User from '../models/User.js'
+import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'mi-secret-super-seguro'
+const JWT_SECRET = process.env.JWT_SECRET || 'mi-secret-super-seguro';
 
 export const authenticateToken = async (req, res, next) => {
-  const authHeader = req.headers['authorization']
-  const token = authHeader && authHeader.split(' ')[1]
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
-    return res.status(401).json({ error: 'Token de acceso requerido' })
+    return res.status(401).json({ error: 'Token de acceso requerido' });
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET)
+    const decoded = jwt.verify(token, JWT_SECRET);
 
-    req.user = decoded
-    next()
+    req.user = decoded;
+    next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ error: 'Token expirado', expiredAt: error.expiredAt })
+      return res.status(401).json({ error: 'Token expirado', expiredAt: error.expiredAt });
     }
-    return res.status(403).json({ error: 'Token inválido', details: error.message })
+    return res.status(403).json({ error: 'Token inválido', details: error.message });
   }
-}
+};
 
 export const authorizeRoles = (...roles) => {
   return (req, res, next) => {
@@ -30,12 +29,12 @@ export const authorizeRoles = (...roles) => {
       return res.status(403).json({
         error: 'No tienes permisos para realizar esta acción',
         requiredRoles: roles,
-        userRole: req.user.role
-      })
+        userRole: req.user.role,
+      });
     }
-    next()
-  }
-}
+    next();
+  };
+};
 
 export const generateToken = (user) => {
   return jwt.sign(
@@ -43,9 +42,9 @@ export const generateToken = (user) => {
       userId: user.id,
       username: user.username,
       role: user.role,
-      email: user.email
+      email: user.email,
     },
     JWT_SECRET,
-    { expiresIn: '30d' }
-  )
-}
+    { expiresIn: '30d' },
+  );
+};

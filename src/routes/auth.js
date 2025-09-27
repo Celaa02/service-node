@@ -1,13 +1,14 @@
-import express from 'express'
-import { register, login, getProfile } from '../controllers/authController.js'
-import { authenticateToken } from '../middleware/auth.js'
-import { authLimiter } from '../middleware/rateLimiter.js'
+import express from 'express';
+import { register, login, profile } from '../controllers/authController.js';
+import { authenticateToken } from '../middleware/auth.js';
+import { authLimiter } from '../middleware/rateLimiter.js';
+import { validate } from '../middleware/validate.js';
+import { registerSchema, loginSchema } from '../services/validations/auth.schema.js';
 
-const router = express.Router()
+const router = express.Router();
 
-router.post('/register', register)
-router.post('/login', authLimiter, login)
-router.get('/profile', authenticateToken, getProfile)
+router.post('/register', validate({ body: registerSchema }), register);
+router.post('/login', validate({ body: loginSchema }), authLimiter, login);
+router.get('/profile', authenticateToken, profile);
 
-
-export default router
+export default router;
