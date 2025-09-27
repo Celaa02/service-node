@@ -40,7 +40,7 @@ export const authorizeRoles = (...roles) => {
 export const generateToken = (user) => {
   return jwt.sign(
     {
-      userId: user._id,
+      userId: user.id,
       username: user.username,
       role: user.role,
       email: user.email
