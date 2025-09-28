@@ -1,0 +1,1036 @@
+openapi: 3.0.3
+info:
+  title: Plurall Test API
+  description: API de autenticación, tareas, reportes y notificaciones (desarrollo).
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000
+    description: Local (Docker/Dev)
+
+tags:
+  - name: Auth
+  - name: Users
+  - name: Tasks
+  - name: Reports
+  - name: Notifications
+
+paths:
+  ########################
+  # AUTH
+  ########################
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      summary: Registrar usuario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+            examples:
+              ok:
+                value:
+                  username: Sofia
+                  email: sofia@gmail.com
+                  password: sofia_test
+                  first_name: sofia
+                  last_name: lopez
+      responses:
+        '201':
+          description: Registrado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegisterResponse' }
+        '409':
+          description: Usuario ya existe
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ValidationError' }
+        '500':
+          description: Error interno
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Iniciar sesión
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+            examples:
+              ok:
+                value:
+                  email: sofia@gmail.com
+                  password: sofia_test
+      responses:
+        '200':
+          description: Login OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+        '401':
+          description: Credenciales inválidas
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500':
+          description: Error interno
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /api/auth/profile:
+    get:
+      tags: [Users]
+      summary: Perfil del usuario autenticado
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Perfil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: '#/components/schemas/User' }
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  ########################
+  # TASKS
+  ########################
+  /api/tasks:
+    get:
+      tags: [Tasks]
+      summary: Listar tareas
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Task' }
+                  meta: { $ref: '#/components/schemas/PaginationMeta' }
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+    post:
+      tags: [Tasks]
+      summary: Crear tarea
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TaskCreate' }
+            examples:
+              ok:
+                value:
+                  title: Unittest
+                  description: implementar test
+                  project_id: 650e8400-e29b-41d4-a716-446655440001
+                  assigned_to: 7ed3db12-4640-4ac5-a7d1-cd1a40c87613
+                  priority: low
+      responses:
+        '201':
+          description: Creada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Task' }
+        '422':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ValidationError' }
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /api/tasks/{id}:
+    get:
+      tags: [Tasks]
+      summary: Obtener tarea
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, description: 'UUID de tarea' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Task' }
+        '404':
+          description: No encontrada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+    put:
+      tags: [Tasks]
+      summary: Actualizar tarea (reemplazo)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TaskUpdate' }
+            examples:
+              ok:
+                value:
+                  title: Test QA
+                  status: pending
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Task' }
+        '404':
+          description: No encontrada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+    delete:
+      tags: [Tasks]
+      summary: Eliminar tarea
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '204':
+          description: Eliminada
+        '404':
+          description: No encontrada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /api/tasks/{id}/comments:
+    post:
+      tags: [Tasks]
+      summary: Agregar comentario a una tarea
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TaskCommentCreate' }
+            examples:
+              ok:
+                value: { content: 'revisar test de los controladores' }
+      responses:
+        '201':
+          description: Comentario creado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TaskComment' }
+        '404':
+          description: Tarea no encontrada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          description: No autorizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  ########################
+  # REPORTS
+  ########################
+  /api/reports/dashboard:
+    get:
+      tags: [Reports]
+      summary: Reporte de dashboard
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportDashboard' }
+              example:
+                success: true
+                stats:
+                  total_users: 7
+                  total_projects: 4
+                  total_tasks: 12
+                  completed_tasks: 5
+        '401':
+          description: No autorizado
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+  /api/reports/productivity:
+    get:
+      tags: [Reports]
+      summary: Reporte de productividad por usuario
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportProductivity' }
+              example:
+                success: true
+                total: 11
+                items:
+                  - id: '550e8400-e29b-41d4-a716-446655440003'
+                    username: 'mrodriguez'
+                    last_name: 'Rodriguez'
+                    first_name: 'Maria'
+                    total_tasks: 4
+                    completed_tasks: 3
+                    efficiency_ratio: 1.1666666666667
+                    in_progress_tasks: 0
+                    total_hours_worked: 73
+                  - id: '550e8400-e29b-41d4-a716-446655440004'
+                    username: 'calopez'
+                    last_name: 'López'
+                    first_name: 'Carlos'
+                    total_tasks: 4
+                    completed_tasks: 1
+                    efficiency_ratio: 1.0833333333333
+                    in_progress_tasks: 1
+                    total_hours_worked: 26
+
+  /api/reports/projects:
+    get:
+      tags: [Reports]
+      summary: Reporte de proyectos
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportProjects' }
+              example:
+                success: true
+                projects:
+                  - id: '650e8400-e29b-41d4-a716-446655440001'
+                    name: 'Plataforma E-Learning'
+                    description: 'Desarrollo de nueva plataforma educativa'
+                    status: 'active'
+                    start_date: '2024-01-15T00:00:00.000Z'
+                    end_date: '2024-12-31T00:00:00.000Z'
+                    budget: 150000
+                    owner_username: 'jgarcia'
+                    total_tasks: 7
+                    completed_tasks: 2
+                    pending_tasks: 2
+                    in_progress_tasks: 2
+                    completion_percentage: 28.57
+                    total_estimated_hours: 129
+                    total_actual_hours: 84
+                    time_efficiency_percentage: 52.83
+
+  /api/reports/time-analysis:
+    get:
+      tags: [Reports]
+      summary: Análisis temporal (creación/completadas/lead-time por día)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportTimeAnalysis' }
+              example:
+                success: true
+                group_by: 'day'
+                analysis:
+                  - period: '2024-02-05T00:00:00.000Z'
+                    active_users: 1
+                    total_entries: 1
+                    total_hours: 4.0
+                    avg_hours_per_entry: 4.0
+                    tasks_worked_on: 1
+                    projects_involved: 1
+                  - period: '2024-02-01T00:00:00.000Z'
+                    active_users: 1
+                    total_entries: 1
+                    total_hours: 8.0
+                    avg_hours_per_entry: 8.0
+                    tasks_worked_on: 1
+                    projects_involved: 1
+
+  /api/reports/user-ranking:
+    get:
+      tags: [Reports]
+      summary: Ranking de usuarios por productividad
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, default: 10 }
+        - in: query
+          name: offset
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportUserRanking' }
+              example:
+                success: true
+                ranking:
+                  total: 11
+                  items:
+                    - id: '550e8400-e29b-41d4-a716-446655440004'
+                      score: 3.58
+                      username: 'calopez'
+                      last_name: 'López'
+                      first_name: 'Carlos'
+                      total_tasks: 4
+                      completed_tasks: 1
+                      efficiency_ratio: 1.0833333333333
+                      in_progress_tasks: 1
+                      total_hours_worked: 26
+                    - id: '55031c4d-cae5b-4635-b8df-ced956b8a2c6'
+                      score: 1.00
+                      username: 'Luis'
+                      last_name: 'Puerta'
+                      first_name: 'Luis'
+                      total_tasks: 0
+                      completed_tasks: 0
+                      efficiency_ratio: 0
+                      in_progress_tasks: 0
+                      total_hours_worked: 0
+
+  /api/reports/project-timeline:
+    get:
+      tags: [Reports]
+      summary: Línea de tiempo de un proyecto
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: project_id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportProjectTimeline' }
+              example:
+                success: true
+                timeline:
+                  - project_id: '650e8400-e29b-41d4-a716-446655440001'
+                    project_name: 'Plataforma E-Learning'
+                    event_date: '2024-01-15T00:00:00.000Z'
+                    event_type: 'project_start'
+                    task_id: null
+                    task_title: null
+                    total_tasks: 7
+                    completed_tasks: 2
+                    completion_percentage: 28.57
+                  - project_id: '650e8400-e29b-41d4-a716-446655440001'
+                    project_name: 'Plataforma E-Learning'
+                    event_date: '2024-01-28T00:00:00.000Z'
+                    event_type: 'task_completed'
+                    task_id: '650e8400-e29b-41d4-a716-446655440001'
+                    task_title: 'Diseño de base de datos'
+                    total_tasks: 7
+                    completed_tasks: 2
+                    completion_percentage: 28.57
+
+  /api/reports/workload-distribution:
+    get:
+      tags: [Reports]
+      summary: Distribución de carga por proyecto/usuario/equipo
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: scope
+          required: true
+          schema: { type: string, enum: [project, user, team] }
+        - in: query
+          name: status
+          schema: { type: string, enum: [pending, in_progress, done], nullable: true }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportWorkloadDistribution' }
+              example:
+                success: true
+                scope: 'user'
+                distribution:
+                  - owner_id: 'eeccf81f-f121-4723-ac9a-f940af410e34'
+                    owner_name: 'Celaa'
+                    total_tasks: 38
+                    pending_tasks: 38
+                    in_progress_tasks: 0
+                    completed_tasks: 0
+                    total_estimated_hours: 0
+                    total_actual_hours: 0
+                  - owner_id: '550e8400-e29b-41d4-a716-446655440005'
+                    owner_name: 'amartinez'
+                    total_tasks: 4
+                    pending_tasks: 0
+                    in_progress_tasks: 2
+                    completed_tasks: 1
+                    total_estimated_hours: 76
+                    total_actual_hours: 51
+
+  /api/reports/export-data:
+    post:
+      tags: [Reports]
+      summary: Exportar datos (CSV)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: OK (devuelve CSV)
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+              example: |
+                id,username,first_name,last_name,total_tasks,completed_tasks,in_progress_tasks,efficiency_ratio,total_hours_worked
+                550e8400-e29b-41d4-a716-446655440003,mrodriguez,Maria,Rodriguez,4,3,0,1.1666666666667,73
+                550e8400-e29b-41d4-a716-446655440004,calopez,Carlos,López,4,1,1,1.0833333333333,26
+
+  /api/reports/import-tasks:
+    post:
+      tags: [Reports]
+      summary: Importar tareas desde CSV
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [csvFile]
+              properties:
+                csvFile: { type: string, format: binary }
+      responses:
+        '200':
+          description: Procesado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportImportResult' }
+              example:
+                success: true
+                processed: 3
+                imported: 0
+                errors: 3
+                error_details:
+                  - row:
+                      title: 'Diseñar esquema DB'
+                      description: 'Definir tablas, índices y FKs'
+                      status: 'pending'
+                      priority: 'high'
+                      project_id: '550e8400-e29b-41d4-a716-446655440010'
+                      assigned_to: '550e8400-e29b-41d4-a716-446655440001'
+                      estimated_hours: '8'
+                    error: 'insert or update on table "tasks" violates foreign key constraint "tasks_project_id_fkey"'
+
+  ########################
+  # NOTIFICATIONS
+  ########################
+  /api/notifications:
+    get:
+      tags: [Notifications]
+      summary: Listar notificaciones
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Notification' } }
+        '401':
+          description: No autorizado
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+  /api/notifications/{id}/read:
+    patch:
+      tags: [Notifications]
+      summary: Marcar notificación como leída/no leída
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                is_read: { type: boolean, default: true }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Notification' }
+        '404':
+          description: No encontrada
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+        '401':
+          description: No autorizado
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+  /api/notifications/preferences/me:
+    get:
+      tags: [Notifications]
+      summary: Obtener preferencias del usuario
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NotificationPreference' }
+        '401':
+          description: No autorizado
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+    put:
+      tags: [Notifications]
+      summary: Actualizar preferencias del usuario
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NotificationPreferenceUpdate' }
+            examples:
+              ok: { value: { email_enabled: true } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NotificationPreference' }
+        '401':
+          description: No autorizado
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+  /api/notifications/templates:
+    post:
+      tags: [Notifications]
+      summary: Crear template de notificación
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NotificationTemplateCreate' }
+            examples:
+              ok:
+                value:
+                  type: TASK_ASSIGNED
+                  locale: es
+                  subject: 'Nueva tarea: {{title}}'
+                  html: '<h2>Hola {{username}}</h2><p>Tienes una nueva tarea: <b>{{title}}</b></p>'
+      responses:
+        '201':
+          description: Creado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NotificationTemplate' }
+        '401':
+          description: No autorizado
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # Genéricos
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+        code: { type: string, nullable: true }
+        details: { type: array, items: { type: string }, nullable: true }
+        timestamp: { type: string, format: date-time, nullable: true }
+        path: { type: string, nullable: true }
+        method: { type: string, nullable: true }
+
+    ValidationError:
+      allOf:
+        - $ref: '#/components/schemas/Error'
+        - type: object
+          properties:
+            details:
+              type: array
+              items: { type: string }
+
+    PaginationMeta:
+      type: object
+      properties:
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+        totalPages: { type: integer }
+
+    # Auth / Users
+    RegisterRequest:
+      type: object
+      required: [username, email, password]
+      properties:
+        username: { type: string, minLength: 3, maxLength: 50 }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 6, maxLength: 128 }
+        first_name: { type: string, nullable: true }
+        last_name: { type: string, nullable: true }
+
+    RegisterResponse:
+      type: object
+      properties:
+        token: { type: string }
+        user: { $ref: '#/components/schemas/User' }
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 6 }
+
+    LoginResponse:
+      type: object
+      properties:
+        token: { type: string }
+        user: { $ref: '#/components/schemas/User' }
+
+    User:
+      type: object
+      properties:
+        id: { type: string, example: '7ed3db12-4640-4ac5-a7d1-cd1a40c87613' }
+        username: { type: string, example: 'Sofia' }
+        email: { type: string, example: 'sofia@gmail.com', format: email }
+        role: { type: string, example: 'user' }
+        first_name: { type: string, nullable: true }
+        last_name: { type: string, nullable: true }
+        is_active: { type: boolean, example: true }
+        created_at: { type: string, format: date-time, nullable: true }
+        updated_at: { type: string, format: date-time, nullable: true }
+
+    # Tasks
+    Task:
+      type: object
+      properties:
+        id: { type: string, example: 'fabd303b-a17f-4890-b5d7-d46ab6247f8a' }
+        title: { type: string }
+        description: { type: string, nullable: true }
+        status: { type: string, enum: [pending, in_progress, done], example: pending }
+        priority: { type: string, enum: [low, medium, high], example: low }
+        project_id: { type: string, format: uuid, nullable: true }
+        assigned_to: { type: string, format: uuid, nullable: true }
+        owner_id: { type: string, format: uuid, nullable: true }
+        due_date: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    TaskCreate:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 140 }
+        description: { type: string, nullable: true, maxLength: 2000 }
+        project_id: { type: string, format: uuid, nullable: true }
+        assigned_to: { type: string, format: uuid, nullable: true }
+        priority: { type: string, enum: [low, medium, high], default: medium }
+        due_date: { type: string, format: date-time, nullable: true }
+
+    TaskUpdate:
+      type: object
+      properties:
+        title: { type: string, minLength: 1, maxLength: 140 }
+        description: { type: string, nullable: true, maxLength: 2000 }
+        status: { type: string, enum: [pending, in_progress, done] }
+        priority: { type: string, enum: [low, medium, high] }
+        project_id: { type: string, format: uuid, nullable: true }
+        assigned_to: { type: string, format: uuid, nullable: true }
+        due_date: { type: string, format: date-time, nullable: true }
+
+    TaskCommentCreate:
+      type: object
+      required: [content]
+      properties:
+        content: { type: string, minLength: 1, maxLength: 2000 }
+
+    TaskComment:
+      type: object
+      properties:
+        id: { type: string, example: 'cmt_01J9ZXX...' }
+        task_id: { type: string, format: uuid }
+        author_id: { type: string, format: uuid }
+        content: { type: string }
+        created_at: { type: string, format: date-time }
+
+    # Reports
+    ReportDashboard:
+      type: object
+      properties:
+        success: { type: boolean }
+        stats:
+          type: object
+          properties:
+            total_users: { type: integer }
+            total_projects: { type: integer }
+            total_tasks: { type: integer }
+            completed_tasks: { type: integer }
+
+    ReportProductivity:
+      type: object
+      properties:
+        success: { type: boolean }
+        total: { type: integer }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid }
+              username: { type: string }
+              last_name: { type: string }
+              first_name: { type: string }
+              total_tasks: { type: integer }
+              completed_tasks: { type: integer }
+              efficiency_ratio: { type: number }
+              in_progress_tasks: { type: integer }
+              total_hours_worked: { type: number }
+
+    ReportProjects:
+      type: object
+      properties:
+        success: { type: boolean }
+        projects:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              description: { type: string }
+              status: { type: string }
+              start_date: { type: string, format: date-time }
+              end_date: { type: string, format: date-time, nullable: true }
+              budget: { type: number }
+              owner_username: { type: string }
+              total_tasks: { type: integer }
+              completed_tasks: { type: integer }
+              pending_tasks: { type: integer }
+              in_progress_tasks: { type: integer }
+              completion_percentage: { type: number }
+              total_estimated_hours: { type: number }
+              total_actual_hours: { type: number }
+              time_efficiency_percentage: { type: number }
+
+    ReportTimeAnalysis:
+      type: object
+      properties:
+        success: { type: boolean }
+        group_by: { type: string, enum: [day, week, month] }
+        analysis:
+          type: array
+          items:
+            type: object
+            properties:
+              period: { type: string, format: date-time }
+              active_users: { type: integer }
+              total_entries: { type: integer }
+              total_hours: { type: number }
+              avg_hours_per_entry: { type: number }
+              tasks_worked_on: { type: integer }
+              projects_involved: { type: integer }
+
+    ReportUserRanking:
+      type: object
+      properties:
+        success: { type: boolean }
+        ranking:
+          type: object
+          properties:
+            total: { type: integer }
+            items:
+              type: array
+              items:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  score: { type: number }
+                  username: { type: string }
+                  last_name: { type: string }
+                  first_name: { type: string }
+                  total_tasks: { type: integer }
+                  completed_tasks: { type: integer }
+                  efficiency_ratio: { type: number }
+                  in_progress_tasks: { type: integer }
+                  total_hours_worked: { type: number }
+
+    ReportProjectTimeline:
+      type: object
+      properties:
+        success: { type: boolean }
+        timeline:
+          type: array
+          items:
+            type: object
+            properties:
+              project_id: { type: string, format: uuid }
+              project_name: { type: string }
+              event_date: { type: string, format: date-time }
+              event_type: { type: string, enum: [project_start, task_completed, milestone] }
+              task_id: { type: string, nullable: true }
+              task_title: { type: string, nullable: true }
+              total_tasks: { type: integer }
+              completed_tasks: { type: integer }
+              completion_percentage: { type: number }
+
+    ReportWorkloadDistribution:
+      type: object
+      properties:
+        success: { type: boolean }
+        scope: { type: string, enum: [project, user, team] }
+        distribution:
+          type: array
+          items:
+            type: object
+            properties:
+              owner_id: { type: string }
+              owner_name: { type: string }
+              total_tasks: { type: integer }
+              pending_tasks: { type: integer }
+              in_progress_tasks: { type: integer }
+              completed_tasks: { type: integer }
+              total_estimated_hours: { type: number }
+              total_actual_hours: { type: number }
+
+    ReportImportResult:
+      type: object
+      properties:
+        success: { type: boolean }
+        processed: { type: integer }
+        imported: { type: integer }
+        errors: { type: integer }
+        error_details:
+          type: array
+          items:
+            type: object
+            properties:
+              row:
+                type: object
+                additionalProperties: true
+              error: { type: string }
+
+    # Notifications
+    Notification:
+      type: object
+      properties:
+        id: { type: string, example: 'bfe61ee3-2cad-40ed-b95d-733ebc61816d' }
+        user_id: { type: string, format: uuid }
+        title: { type: string }
+        body: { type: string }
+        is_read: { type: boolean }
+        created_at: { type: string, format: date-time }
+
+    NotificationPreference:
+      type: object
+      properties:
+        email_enabled: { type: boolean, example: true }
+
+    NotificationPreferenceUpdate:
+      type: object
+      properties:
+        email_enabled: { type: boolean }
+
+    NotificationTemplateCreate:
+      type: object
+      required: [type, locale, subject, html]
+      properties:
+        type: { type: string, example: TASK_ASSIGNED }
+        locale: { type: string, example: es }
+        subject: { type: string }
+        html: { type: string }
+
+    NotificationTemplate:
+      allOf:
+        - $ref: '#/components/schemas/NotificationTemplateCreate'
+        - type: object
+          properties:
+            id: { type: string, example: 'tmpl_01J9ZX...' }
+
+security:
+  - bearerAuth: []

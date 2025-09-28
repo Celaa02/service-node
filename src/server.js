@@ -4,6 +4,13 @@ import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import { Server as SocketIOServer } from 'socket.io';
+import YAML from 'yamljs';
+import swaggerUi from 'swagger-ui-express';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 import { connectDB } from './config/database.js';
 import logger from './utils/logger.js';
@@ -21,11 +28,15 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const docPath = path.resolve(__dirname, '../docs/openapi.yaml');
+const swaggerDocument = YAML.load(docPath);
 
 app.use(cors());
 app.use(helmet());
 app.use(express.json());
 
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, { explorer: true }));
+app.get('/docs.json', (_req, res) => res.json(swaggerDocument));
 app.use('/api', rateLimiter);
 
 await connectDB();
