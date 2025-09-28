@@ -256,7 +256,7 @@ describe('Reports Controller', () => {
     it('200 con ranking cuando Joi ok (y castea limit/offset)', async () => {
       const res = mockRes();
       const req = {
-        query: { start_date: '2025-01-01', end_date: '2025-01-31', limit: '5', offset: '2' },
+        query: { start_date: '2025-01-01', end_date: '2025-01-31', limit: '5', page: '2' },
       };
       serviceMocks.getUserRankingServices.mockResolvedValue([{ u: '1' }]);
 
@@ -266,7 +266,7 @@ describe('Reports Controller', () => {
         start_date: '2025-01-01',
         end_date: '2025-01-31',
         limit: 5,
-        offset: 2,
+        page: 2,
       });
       expect(res.json).toHaveBeenCalledWith({ success: true, ranking: [{ u: '1' }] });
     });

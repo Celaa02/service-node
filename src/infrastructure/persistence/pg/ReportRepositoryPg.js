@@ -60,39 +60,59 @@ export class ReportRepositoryPg extends ReportRepository {
     }
   }
 
-  async getUserRanking({ start = null, end = null, limit = 10, offset = 0 }) {
+  async getUserRanking({ start = null, end = null, limit = 10, page = 1 }) {
     try {
-      const sql = `
-      WITH base AS (
+      page = Number.isFinite(+page) && +page > 0 ? +page : 1;
+      limit = Number.isFinite(+limit) && +limit > 0 && +limit <= 100 ? +limit : 20;
+      const offset = (page - 1) * limit;
+
+      const totalSql = `SELECT COUNT(*)::int AS total FROM users u WHERE u.is_active = TRUE;`;
+      const totalRes = await query(totalSql, []);
+      const total = totalRes.rows[0]?.total ?? 0;
+
+      const dataSql = `
+        WITH base AS (
+          SELECT
+            u.id, u.username, u.first_name, u.last_name,
+            COUNT(t.id)::int AS total_tasks,
+            COUNT(*) FILTER (WHERE t.status = 'done')::int         AS completed_tasks,
+            COUNT(*) FILTER (WHERE t.status = 'in_progress')::int  AS in_progress_tasks,
+            AVG(CASE
+                  WHEN t.status='done' AND COALESCE(t.estimated_hours,0) > 0
+                  THEN t.actual_hours::float / NULLIF(t.estimated_hours,0)
+                END) AS efficiency_ratio, -- double precision
+            SUM(CASE WHEN t.status='done' THEN COALESCE(t.actual_hours,0) ELSE 0 END)::numeric AS total_hours_worked
+          FROM users u
+          LEFT JOIN tasks t
+            ON t.assigned_to = u.id
+          AND ($1::timestamptz IS NULL OR t.created_at >= $1)
+          AND ($2::timestamptz IS NULL OR t.created_at <= $2)
+          WHERE u.is_active = TRUE
+          GROUP BY u.id, u.username, u.first_name, u.last_name
+        )
         SELECT
-          u.id, u.username, u.first_name, u.last_name,
-          COUNT(t.id) AS total_tasks,
-          COUNT(CASE WHEN t.status='completed'   THEN 1 END) AS completed_tasks,
-          COUNT(CASE WHEN t.status='in_progress' THEN 1 END) AS in_progress_tasks,
-          AVG(CASE WHEN t.status='completed' AND t.estimated_hours>0
-              THEN t.actual_hours::float / NULLIF(t.estimated_hours,0) END) AS efficiency_ratio,
-          SUM(CASE WHEN t.status='completed' THEN COALESCE(t.actual_hours,0) ELSE 0 END) AS total_hours_worked
-        FROM users u
-        LEFT JOIN tasks t
-          ON t.assigned_to = u.id
-         AND ($1::timestamptz IS NULL OR t.created_at >= $1)
-         AND ($2::timestamptz IS NULL OR t.created_at <= $2)
-        WHERE u.is_active = TRUE
-        GROUP BY u.id, u.username, u.first_name, u.last_name
-      ), scored AS (
-        SELECT *,
-          (completed_tasks*2 + in_progress_tasks*0.5 + COALESCE(efficiency_ratio,1)*1)::numeric(10,2) AS score
+          id, username, first_name, last_name,
+          total_tasks, completed_tasks, in_progress_tasks,
+          COALESCE(ROUND(efficiency_ratio::numeric, 2), 1) AS efficiency_ratio,
+          total_hours_worked,
+          ROUND( (
+            completed_tasks*2
+            + COALESCE(in_progress_tasks,0)*0.5
+            + COALESCE(efficiency_ratio,1)
+          )::numeric, 2) AS score
         FROM base
-      ), ordered AS (
-        SELECT * FROM scored ORDER BY score DESC, completed_tasks DESC
-      )
-      SELECT
-        (SELECT COUNT(*) FROM ordered) AS total,
-        (SELECT jsonb_agg(row_to_json(o))
-         FROM (SELECT * FROM ordered OFFSET $3 LIMIT $4) o) AS items;
-    `;
-      const { rows } = await query(sql, [start, end, offset, limit]);
-      return { total: Number(rows[0].total), items: rows[0].items ?? [] };
+        ORDER BY score DESC, completed_tasks DESC, id ASC
+        OFFSET $3 LIMIT $4;
+      `;
+      const dataRes = await query(dataSql, [start, end, offset, limit]);
+
+      return {
+        total,
+        total_pages: total ? Math.ceil(total / limit) : 1,
+        page,
+        limit,
+        items: dataRes.rows,
+      };
     } catch (error) {
       throw new Error(error);
     }

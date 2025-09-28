@@ -180,13 +180,13 @@ describe('reportService', () => {
       start_date: 's',
       end_date: 'e',
       limit: 5,
-      offset: 2,
+      page: 2,
     });
     expect(repoMock.getUserRanking).toHaveBeenCalledWith({
       start_date: 's',
       end_date: 'e',
       limit: 5,
-      offset: 2,
+      page: 2,
     });
     expect(out).toEqual([{ u: 1 }]);
   });

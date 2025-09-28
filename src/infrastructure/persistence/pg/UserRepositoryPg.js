@@ -39,14 +39,28 @@ export class UserRepositoryPg extends UserRepository {
     }
   }
 
-  async createUser({ username, emailLower, passwordHash, firstName = null, lastName = null }) {
+  async createUser({
+    username,
+    emailLower,
+    passwordHash,
+    firstName = null,
+    lastName = null,
+    role,
+  }) {
     try {
       const sql = `
-      INSERT INTO users (username, email, password_hash, first_name, last_name)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO users (username, email, password_hash, first_name, last_name, role)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING id, username, email, first_name, last_name, role, created_at;
     `;
-      const { rows } = await query(sql, [username, emailLower, passwordHash, firstName, lastName]);
+      const { rows } = await query(sql, [
+        username,
+        emailLower,
+        passwordHash,
+        firstName,
+        lastName,
+        role,
+      ]);
       return rows[0];
     } catch (error) {
       throw new Error(error);

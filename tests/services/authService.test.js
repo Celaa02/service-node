@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import { jest } from '@jest/globals';
 
 const loggerMock = { info: jest.fn() };
@@ -82,6 +81,7 @@ describe('authService', () => {
         passwordHash: 'hash(pwd)',
         firstName: 'F',
         lastName: 'L',
+        role: 'user',
       });
       expect(generateToken).toHaveBeenCalledWith({
         id: 'uid-1',

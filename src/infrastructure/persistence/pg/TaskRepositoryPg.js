@@ -14,10 +14,11 @@ export class TaskRepositoryPg extends TaskRepository {
   async create(input) {
     try {
       const sql = `
-      INSERT INTO tasks (title, description, project_id, assigned_to, created_by, priority, due_date, estimated_hours)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-      RETURNING *;
-    `;
+        INSERT INTO tasks
+          (title, description, project_id, assigned_to, created_by, priority, due_date, estimated_hours)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+        RETURNING *;
+      `;
       const params = [
         input.title,
         input.description ?? null,
@@ -30,8 +31,20 @@ export class TaskRepositoryPg extends TaskRepository {
       ];
       const { rows } = await query(sql, params);
       return rows[0];
-    } catch (error) {
-      throw new Error(error);
+    } catch (err) {
+      // Mapear violaciones de FK a 400 legible
+      if (err?.code === '23503') {
+        const c = err.constraint || '';
+        let message = 'Foreign key inválida';
+        if (c === 'tasks_created_by_fkey') message = 'created_by inválido';
+        else if (c === 'tasks_assigned_to_fkey') message = 'assigned_to inválido';
+        else if (c === 'tasks_project_id_fkey') message = 'project_id inválido';
+
+        const e = new Error(message);
+        e.status = 400;
+        throw e;
+      }
+      throw err; // otros errores: burbujear
     }
   }
 

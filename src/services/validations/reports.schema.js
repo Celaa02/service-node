@@ -5,7 +5,7 @@ export const rankingQuery = Joi.object({
   start_date: isoDate.allow(null),
   end_date: isoDate.allow(null),
   limit: Joi.number().integer().min(1).max(100).default(10),
-  offset: Joi.number().integer().min(0).default(0),
+  page: Joi.number().integer().min(1).default(1),
 });
 
 export const timelineQuery = Joi.object({

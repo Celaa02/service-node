@@ -9,13 +9,14 @@ import { usersSearchQuerySchema } from '../services/validations/user.schema.js';
 
 export const register = async (req, res) => {
   try {
-    const { username, email, password, first_name, last_name } = req.body;
+    const { username, email, password, first_name, last_name, role } = req.body;
     const { user, token } = await registerUser({
       username,
       email,
       password,
       first_name,
       last_name,
+      role,
     });
     return res
       .status(201)

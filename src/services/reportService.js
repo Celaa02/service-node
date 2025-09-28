@@ -74,10 +74,10 @@ export const getUserRankingServices = async ({
   start_date = null,
   end_date = null,
   limit = 10,
-  offset = 0,
+  page = 1,
 }) => {
   try {
-    return await repo.getUserRanking({ start_date, end_date, limit, offset });
+    return await repo.getUserRanking({ start_date, end_date, limit, page });
   } catch (err) {
     logger.error('Error en service getUserRanking:', err.message);
     throw err;

@@ -1,5 +1,3 @@
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
-
 -- USERS
 CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower_unique ON users (LOWER(email));
 CREATE INDEX IF NOT EXISTS idx_users_role       ON users(role);
@@ -17,8 +15,10 @@ CREATE INDEX IF NOT EXISTS idx_tasks_assigned_to    ON tasks(assigned_to);
 CREATE INDEX IF NOT EXISTS idx_tasks_project_id     ON tasks(project_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_project_status ON tasks(project_id, status);
 CREATE INDEX IF NOT EXISTS idx_tasks_created_at     ON tasks(created_at);
--- CREATE INDEX IF NOT EXISTS idx_tasks_created_id  ON tasks(created_at, id); -- si usas keyset
+-- Si luego usas keyset pagination:
+-- CREATE INDEX IF NOT EXISTS idx_tasks_created_id  ON tasks(created_at, id);
 
 -- NOTIFICATIONS
 CREATE INDEX IF NOT EXISTS idx_notif_user_created ON notifications(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_notif_user_unread  ON notifications(user_id, is_read, created_at DESC);
+

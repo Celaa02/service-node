@@ -90,7 +90,7 @@ describe('UserRepositoryPg', () => {
       expect(query).toHaveBeenCalledTimes(1);
       const [sql, params] = query.mock.calls[0];
       expect(sql).toMatch(
-        /INSERT INTO users \(username, email, password_hash, first_name, last_name\)\s+VALUES \(\$1, \$2, \$3, \$4, \$5\)\s+RETURNING id, username, email, first_name, last_name, role, created_at;/i,
+        /INSERT INTO users \(username, email, password_hash, first_name, last_name, role\)\s+VALUES \(\$1, \$2, \$3, \$4, \$5, \$6\)\s+RETURNING id, username, email, first_name, last_name, role, created_at;/i,
       );
       expect(params).toEqual(['carlos', 'carlos@test.com', 'hash', 'Carlos', 'López']);
       expect(out).toEqual(row);

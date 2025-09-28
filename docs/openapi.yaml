@@ -386,79 +386,82 @@ paths:
                     total_actual_hours: 84
                     time_efficiency_percentage: 52.83
 
-  /api/reports/time-analysis:
-    get:
-      tags: [Reports]
-      summary: Análisis temporal (creación/completadas/lead-time por día)
-      security: [{ bearerAuth: [] }]
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/ReportTimeAnalysis' }
-              example:
-                success: true
-                group_by: 'day'
-                analysis:
-                  - period: '2024-02-05T00:00:00.000Z'
-                    active_users: 1
-                    total_entries: 1
-                    total_hours: 4.0
-                    avg_hours_per_entry: 4.0
-                    tasks_worked_on: 1
-                    projects_involved: 1
-                  - period: '2024-02-01T00:00:00.000Z'
-                    active_users: 1
-                    total_entries: 1
-                    total_hours: 8.0
-                    avg_hours_per_entry: 8.0
-                    tasks_worked_on: 1
-                    projects_involved: 1
-
   /api/reports/user-ranking:
     get:
       tags: [Reports]
-      summary: Ranking de usuarios por productividad
-      security: [{ bearerAuth: [] }]
+      summary: Ranking de usuarios (paginado)
+      description: |
+        Devuelve un ranking de usuarios activos calculado a partir de tareas en el rango de fechas indicado.
+        **Orden:** score DESC, completed_tasks DESC, id ASC.
+        - score = (completed_tasks * 2) + (in_progress_tasks * 0.5) + efficiency_ratio
+        - efficiency_ratio se promedia sobre tareas `done` con estimated_hours > 0
+      security:
+        - bearerAuth: []
       parameters:
         - in: query
-          name: limit
-          schema: { type: integer, minimum: 1, default: 10 }
+          name: start
+          description: Fecha/hora inicial (inclusive) para considerar tareas (UTC).
+          schema:
+            { type: string, format: date-time, nullable: true, example: '2025-09-01T00:00:00Z' }
         - in: query
-          name: offset
-          schema: { type: integer, minimum: 0, default: 0 }
+          name: end
+          description: Fecha/hora final (inclusive) para considerar tareas (UTC).
+          schema:
+            { type: string, format: date-time, nullable: true, example: '2025-09-30T23:59:59Z' }
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
       responses:
         '200':
-          description: OK
+          description: Ranking calculado correctamente
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ReportUserRanking' }
+              schema:
+                $ref: '#/components/schemas/UserRankingResponse'
               example:
                 success: true
-                ranking:
-                  total: 11
-                  items:
-                    - id: '550e8400-e29b-41d4-a716-446655440004'
-                      score: 3.58
-                      username: 'calopez'
-                      last_name: 'López'
-                      first_name: 'Carlos'
-                      total_tasks: 4
-                      completed_tasks: 1
-                      efficiency_ratio: 1.0833333333333
-                      in_progress_tasks: 1
-                      total_hours_worked: 26
-                    - id: '55031c4d-cae5b-4635-b8df-ced956b8a2c6'
-                      score: 1.00
-                      username: 'Luis'
-                      last_name: 'Puerta'
-                      first_name: 'Luis'
-                      total_tasks: 0
-                      completed_tasks: 0
-                      efficiency_ratio: 0
-                      in_progress_tasks: 0
-                      total_hours_worked: 0
+                total: 42
+                total_pages: 3
+                page: 1
+                limit: 20
+                items:
+                  - id: 'u7'
+                    username: 'juana'
+                    first_name: 'Juana'
+                    last_name: 'García'
+                    total_tasks: 10
+                    completed_tasks: 6
+                    in_progress_tasks: 3
+                    efficiency_ratio: 0.87
+                    total_hours_worked: 55.5
+                    score: 8.37
+                  - id: 'u2'
+                    username: 'carlos'
+                    first_name: 'Carlos'
+                    last_name: 'López'
+                    total_tasks: 8
+                    completed_tasks: 5
+                    in_progress_tasks: 2
+                    efficiency_ratio: 0.92
+                    total_hours_worked: 41.0
+                    score: 7.92
+        '400':
+          description: Parámetros inválidos
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              example:
+                error: 'Campos invalidos'
+                details: ['"limit" must be less than or equal to 100']
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              example: { error: 'Token de acceso requerido' }
 
   /api/reports/project-timeline:
     get:
@@ -706,7 +709,145 @@ paths:
         '401':
           description: No autorizado
           content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /api/auth/search:
+    get:
+      tags: [Users]
+      summary: Búsqueda de usuarios
+      description: Busca usuarios por texto y/o filtros con paginación.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string, example: 'so' }
+          description: Texto a buscar en username, email, first_name o last_name (case-insensitive).
+        - in: query
+          name: role
+          schema: { type: string, enum: [admin, user], example: 'admin' }
+        - in: query
+          name: is_active
+          schema: { type: boolean, example: true }
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - in: query
+          name: sort
+          schema:
+            type: string
+            enum: [username, -username, email, -email, created_at, -created_at, role, -role]
+            default: username
+      responses:
+        '200':
+          description: Resultado de la búsqueda
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSearchResponse'
+              examples:
+                ok:
+                  value:
+                    total: 2
+                    items:
+                      - id: 'u1'
+                        username: 'sofia'
+                        email: 'sofia@example.com'
+                        role: 'admin'
+                        first_name: 'Sofía'
+                        last_name: 'Pérez'
+                        is_active: true
+                        created_at: '2025-09-27T10:00:00Z'
+                        updated_at: '2025-09-28T09:00:00Z'
+                      - id: 'u2'
+                        username: 'sol'
+                        email: 'sol@example.com'
+                        role: 'user'
+                        first_name: 'Sol'
+                        last_name: 'Luna'
+                        is_active: true
+                        created_at: '2025-09-20T15:00:00Z'
+                        updated_at: '2025-09-25T11:00:00Z'
+        '400':
+          description: Parámetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: 'Campos invalidos'
+                details: ['"limit" must be greater than or equal to 1']
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example: { error: 'Token de acceso requerido' }
 
+  /api/project/{id}/stats:
+    get:
+      tags: [Projects]
+      summary: Estadísticas de un proyecto
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+          description: ID del proyecto
+      responses:
+        '200':
+          description: Estadísticas agregadas del proyecto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectStatsResponse'
+              example:
+                success: true
+                project:
+                  id: 'p1'
+                  name: 'Proyecto Demo'
+                  status: 'active'
+                  start_date: '2025-09-01'
+                  end_date: null
+                tasks:
+                  total: 12
+                  by_status:
+                    pending: 4
+                    in_progress: 5
+                    done: 3
+                  completion_percentage: 25.0
+                  last_activity: '2025-09-28T08:55:00Z'
+                hours:
+                  estimated: 120
+                  actual: 95.5
+                  efficiency_percentage: 79.58
+                top_contributors:
+                  - user_id: 'u7'
+                    username: 'juana'
+                    first_name: 'Juana'
+                    last_name: 'García'
+                    completed_tasks: 2
+                  - user_id: 'u2'
+                    username: 'carlos'
+                    first_name: 'Carlos'
+                    last_name: 'López'
+                    completed_tasks: 1
+        '404':
+          description: Proyecto no encontrado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              example: { error: 'Proyecto no encontrado' }
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              example: { error: 'Token de acceso requerido' }
 components:
   securitySchemes:
     bearerAuth:
@@ -725,6 +866,17 @@ components:
         timestamp: { type: string, format: date-time, nullable: true }
         path: { type: string, nullable: true }
         method: { type: string, nullable: true }
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: 'Mensaje de error'
+        details:
+          type: array
+          items:
+            type: string
+      additionalProperties: false
 
     ValidationError:
       allOf:
@@ -785,6 +937,16 @@ components:
         is_active: { type: boolean, example: true }
         created_at: { type: string, format: date-time, nullable: true }
         updated_at: { type: string, format: date-time, nullable: true }
+      required: [id, username, email, role, is_active, created_at]
+
+    UserSearchResponse:
+      type: object
+      properties:
+        total: { type: integer, example: 42 }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/User' }
+      required: [total, items]
 
     # Tasks
     Task:
@@ -916,29 +1078,43 @@ components:
               tasks_worked_on: { type: integer }
               projects_involved: { type: integer }
 
-    ReportUserRanking:
+    UserRankingItem:
       type: object
       properties:
-        success: { type: boolean }
-        ranking:
-          type: object
-          properties:
-            total: { type: integer }
-            items:
-              type: array
-              items:
-                type: object
-                properties:
-                  id: { type: string, format: uuid }
-                  score: { type: number }
-                  username: { type: string }
-                  last_name: { type: string }
-                  first_name: { type: string }
-                  total_tasks: { type: integer }
-                  completed_tasks: { type: integer }
-                  efficiency_ratio: { type: number }
-                  in_progress_tasks: { type: integer }
-                  total_hours_worked: { type: number }
+        id: { type: string, format: uuid }
+        username: { type: string }
+        first_name: { type: string, nullable: true }
+        last_name: { type: string, nullable: true }
+        total_tasks: { type: integer, example: 10 }
+        completed_tasks: { type: integer, example: 6 }
+        in_progress_tasks: { type: integer, example: 3 }
+        efficiency_ratio: { type: number, format: float, example: 0.87 }
+        total_hours_worked: { type: number, format: float, example: 55.5 }
+        score: { type: number, format: float, example: 8.37 }
+      required:
+        [
+          id,
+          username,
+          total_tasks,
+          completed_tasks,
+          in_progress_tasks,
+          efficiency_ratio,
+          total_hours_worked,
+          score,
+        ]
+
+    UserRankingResponse:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+        total: { type: integer, example: 42 }
+        total_pages: { type: integer, example: 3 }
+        page: { type: integer, example: 1 }
+        limit: { type: integer, example: 20 }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/UserRankingItem' }
+      required: [success, total, total_pages, page, limit, items]
 
     ReportProjectTimeline:
       type: object
@@ -1032,5 +1208,53 @@ components:
           properties:
             id: { type: string, example: 'tmpl_01J9ZX...' }
 
+    Project:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        status: { type: string, example: 'active' }
+        start_date: { type: string, format: date, nullable: true }
+        end_date: { type: string, format: date, nullable: true }
+
+    TopContributor:
+      type: object
+      properties:
+        user_id: { type: string, format: uuid }
+        username: { type: string }
+        first_name: { type: string, nullable: true }
+        last_name: { type: string, nullable: true }
+        completed_tasks: { type: integer }
+      required: [user_id, username, completed_tasks]
+
+    ProjectStatsResponse:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+        project: { $ref: '#/components/schemas/Project' }
+        tasks:
+          type: object
+          properties:
+            total: { type: integer }
+            by_status:
+              type: object
+              properties:
+                pending: { type: integer }
+                in_progress: { type: integer }
+                done: { type: integer }
+            completion_percentage: { type: number, format: float }
+            last_activity: { type: string, format: date-time, nullable: true }
+          required: [total, by_status, completion_percentage]
+        hours:
+          type: object
+          properties:
+            estimated: { type: number }
+            actual: { type: number }
+            efficiency_percentage: { type: number, nullable: true }
+          required: [estimated, actual]
+        top_contributors:
+          type: array
+          items: { $ref: '#/components/schemas/TopContributor' }
+      required: [success, project, tasks, hours, top_contributors]
 security:
   - bearerAuth: []

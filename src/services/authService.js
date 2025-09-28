@@ -5,7 +5,7 @@ import logger from '../utils/logger.js';
 
 const userRepo = new UserRepositoryPg();
 
-export const registerUser = async ({ username, email, password, first_name, last_name }) => {
+export const registerUser = async ({ username, email, password, first_name, last_name, role }) => {
   const emailLower = email.trim().toLowerCase();
   const exists = await userRepo.existsByEmailOrUsername({ emailLower, username });
   if (exists) {
@@ -20,6 +20,7 @@ export const registerUser = async ({ username, email, password, first_name, last
     passwordHash,
     firstName: first_name ?? null,
     lastName: last_name ?? null,
+    role: role ?? 'user',
   });
   const token = generateToken({
     id: user.id,

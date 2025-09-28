@@ -103,13 +103,14 @@ export const getUserRanking = async (req, res) => {
         details: error.details.map((d) => d.message),
       });
     }
-    const { start_date, end_date, limit, offset } = req.query;
+    const { start_date, end_date, limit, page } = req.query;
     const ranking = await getUserRankingServices({
       start_date: start_date ?? null,
       end_date: end_date ?? null,
       limit: Number(limit ?? 10),
-      offset: Number(offset ?? 0),
+      page: Number(page ?? 0),
     });
+    console.log('🚀 ~ getUserRanking ~ ranking:', ranking);
     return res.json({ success: true, ranking });
   } catch (err) {
     logger.error('getUserRanking:', err.message);
