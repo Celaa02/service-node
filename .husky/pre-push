@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+set -e
+
+echo "🔎 Lint..."
+npm run lint
+
+echo "🧪 Tests (con cobertura)..."
+npm run test
+

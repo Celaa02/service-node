@@ -1,235 +1,480 @@
-# Prueba Técnica Backend Node.js + PostgreSQL - Plurall
+# ⚙️ Services - Core API
 
-## 📋 Instrucciones Generales
+---
 
-**Tiempo límite:** Máximo 48 horas después de recibir este repositorio.
+## 🚀 Stack & características
 
-**Entrega:** Enviar código fuente en un repositorio de GitHub (fork o nuevo repo) o zip adjunto al correo de respuesta.
+- **Node 20**, **Express**, **ESM**
+- **PostgreSQL 16**
+- Autenticación **JWT (Bearer)**
+- **Swagger UI** con OpenAPI (`/api/docs`)
+- **Tests** con Jest + Supertest
+- **Lint/Format**: ESLint + Prettier
+- **Docker Compose** para entorno dev
+- **SQL init**: extensiones, esquema, seeds e índices automáticos
+- **pg_stat_statements** para medir rendimiento de consultas
 
-**IA y Live Coding:** Valoramos altamente el uso eficiente de herramientas de IA en el desarrollo. Si utilizas herramientas de IA (ChatGPT, Claude, GitHub Copilot, etc.), **incluye obligatoriamente en la entrega:**
+---
 
-### 📋 Reporte de Uso de IA
-- **Ventana de contexto utilizada:** Cantidad de tokens/caracteres enviados por prompt
-- **Consumo de tokens:** Estimación del total de tokens utilizados durante el desarrollo
-- **Herramientas específicas:** Modelo y versión (ej: GPT-4, Claude 3.5, Copilot)
-- **Distribución del código:**
-  - % de código generado por IA vs. código humano
-  - Justificación de por qué se distribuyó de esa manera
-  - Qué partes se delegaron a la IA y cuáles se codificaron manualmente
-- **Metodología de trabajo asistido:**
-  - Estrategia de prompting utilizada
-  - Cómo se estructuraron las conversaciones con la IA
-  - Técnicas de refinamiento y iteración empleadas
-- **Prompts clave utilizados:** Ejemplos de los prompts más efectivos
-- **Decisiones técnicas:** Documentación de elecciones arquitectónicas influenciadas por la IA
+## 📁 Estructura (resumen)
 
-### 🎯 Lo que buscamos evaluar:
-- **Optimización del uso de IA:** Capacidad para obtener resultados de alta calidad minimizando iteraciones
-- **Conocimiento de limitaciones:** Identificación de cuándo la IA es útil vs. cuándo es mejor el enfoque manual
-- **Integración inteligente:** Cómo combinas efectivamente el código generado por IA con tu experiencia técnica
-- **Productividad:** Capacidad para acelerar el desarrollo manteniendo la calidad del código
-- **Criterio técnico:** Habilidad para revisar, validar y mejorar el código generado por IA
+```
+src/
+  config/          # database.js, env
+  controllers/     # authController, taskController, reportController, ...
+  infrastructure/
+    persistence/
+      pg/          # repositorios Postgres (UserRepositoryPg, TaskRepositoryPg, ...)
+  middleware/      # auth.js, errorHandler.js
+  routes/          # rutas Express
+  services/        # lógica de dominio (authService, taskService, reportService, ...)
+  utils/           # logger.js
+  server.js        # bootstrap Express (Swagger incluido)
 
-### ⚡ Bonus por uso avanzado:
-- Uso de técnicas avanzadas de prompting (chain-of-thought, few-shot learning, etc.)
-- Automatización de tareas repetitivas usando IA
-- Generación eficiente de tests y documentación
-- Optimización de queries SQL asistida por IA con validación manual
+database/
+  00_extensions.sql
+  01_schema.sql
+  02_seed.sql              # opcional
+  03_indexes.sql
 
-## 🚀 Configuración del Proyecto
-
-### Prerrequisitos
-- Node.js 18+
-- PostgreSQL 13+
-- Git
-
-### Instalación
-```bash
-# Clonar/descomprimir el proyecto
-cd backend-plurall-test
-
-# Instalar dependencias
-npm install
-
-# Configurar base de datos PostgreSQL
-createdb plurall_test
-
-# Ejecutar schema y datos de prueba
-psql -d plurall_test -f database/schema.sql
-psql -d plurall_test -f database/seed.sql
-
-# Configurar variables de entorno
-cp .env.example .env
-# Editar .env con tus credenciales de PostgreSQL
-
-# Crear directorios necesarios
-mkdir uploads logs
-
-# Iniciar servidor de desarrollo
-npm run dev
+docker-compose.yml
+Dockerfile
+openapi.yaml                # documentación de la API
 ```
 
-El servidor debe estar disponible en `http://localhost:3000`
+---
 
-## 📊 Descripción del Proyecto
+## ⚙️ Variables de entorno
 
-API REST para gestión de proyectos y tareas con PostgreSQL. El proyecto base **tiene problemas de performance, seguridad y funcionalidades incompletas** que debes identificar y corregir.
+Crea un `.env` (o usa variables del shell). **No subas secretos al repo**.
 
-### Funcionalidades Principales:
-1. **Autenticación JWT** - Registro, login, perfiles
-2. **Gestión de tareas** - CRUD con asignaciones y comentarios
-3. **Gestión de proyectos** - Organización y métricas
-4. **Reportes y analytics** - Estadísticas y productividad
-5. **Importación CSV** - Carga masiva de datos
+```env
+# API
+NODE_ENV=development
+PORT=3000
+JWT_SECRET=super_largo_y_aleatorio_de_32+caracteres
 
-## 🎯 Requerimientos de la Prueba
+# DB (Docker)
+DB_HOST=db
+DB_PORT=5432
+DB_NAME=plurall_test
+DB_USER=appuser
+DB_PASSWORD=appsecret
 
-### 🔴 **Performance y SQL**
-
-1. **Optimizar consultas lentas:**
-   - Identificar y corregir N+1 queries
-   - Implementar paginación eficiente con conteo total
-   - Agregar índices estratégicos para consultas frecuentes
-   - Optimizar JOINs entre tablas relacionadas
-
-2. **Implementar consultas SQL avanzadas:**
-   - Reportes con agregaciones complejas (GROUP BY, COUNT, SUM, AVG)
-   - Rankings de usuarios usando WINDOW FUNCTIONS
-   - Análisis temporal con DATE_TRUNC y agrupaciones por período
-   - Búsqueda de texto eficiente en tareas
-
-### 🟡 **IMPORTANTE - Funcionalidades Faltantes**
-
-3. **Completar endpoints de reportes:**
-   - `GET /api/reports/user-ranking` - Top usuarios por productividad
-   - `GET /api/reports/project-timeline` - Timeline de proyectos con hitos
-   - `GET /api/reports/workload-distribution` - Distribución de carga de trabajo
-   - `POST /api/reports/export-data` - Exportar datos a CSV/Excel
-
-4. **Implementar funcionalidades de seguridad:**
-   - Sistema de roles y permisos granulares
-   - Rate limiting por usuario y endpoint
-   - Validación robusta de entrada con esquemas
-   - Logs de auditoría para acciones críticas
-
-5. **Agregar módulo de notificaciones:**
-   - Sistema de notificaciones en tiempo real
-   - Templates de email para eventos importantes
-   - Configuración de preferencias por usuario
-   - API para marcar notificaciones como leídas
-
-6. **Arquitectura y escalabilidad:**
-   - Implementar transacciones para operaciones críticas
-   - Cache con Redis para consultas frecuentes
-   - Documentación de API con Swagger/OpenAPI
-   - Docker setup para desarrollo
-
-## 📋 Criterios de Evaluación
-
-### **Performance SQL (40 puntos)**
-- Queries optimizadas sin N+1 problems
-- Índices apropiados para consultas frecuentes
-- Uso correcto de agregaciones y JOINs
-- Paginación eficiente implementada
-
-### **Funcionalidades Completas (30 puntos)**
-- Todos los endpoints funcionando correctamente
-- Validaciones robustas en todas las entradas
-- Sistema de roles y permisos implementado
-- Importación/exportación de datos funcional
-
-### **Código Quality (20 puntos)**
-- Arquitectura limpia y mantenible
-- Tests con coverage adecuado
-- Manejo de errores robusto
-- Documentación clara
-
-### **Innovación Técnica (10 puntos)**
-- Características adicionales no solicitadas
-- Uso creativo de tecnologías
-- Consideraciones de escalabilidad
-- Best practices implementadas
-
-## 🔧 Endpoints Requeridos
-
-### Existentes (corregir bugs y optimizar):
-- `POST /api/auth/register` - Registro de usuarios
-- `POST /api/auth/login` - Autenticación
-- `GET /api/auth/profile` - Perfil del usuario
-- `GET /api/tasks` - Listar tareas con filtros
-- `POST /api/tasks` - Crear nueva tarea
-- `PUT /api/tasks/:id` - Actualizar tarea
-- `DELETE /api/tasks/:id` - Eliminar tarea
-- `POST /api/tasks/:id/comments` - Agregar comentario
-- `GET /api/reports/dashboard` - Estadísticas generales
-- `POST /api/reports/import-tasks` - Importar desde CSV
-
-### Nuevos (implementar desde cero):
-- `GET /api/reports/user-ranking` - Ranking de productividad
-- `GET /api/reports/project-timeline` - Timeline de proyectos
-- `GET /api/reports/workload-distribution` - Distribución de trabajo
-- `POST /api/reports/export-data` - Exportar datos
-- `GET /api/notifications` - Obtener notificaciones
-- `PUT /api/notifications/:id/read` - Marcar como leída
-- `GET /api/users/search` - Búsqueda de usuarios
-- `GET /api/projects/:id/stats` - Estadísticas de proyecto
-
-## 📊 Datos de Prueba
-
-La base de datos incluye:
-- **7 usuarios** con diferentes roles (admin, manager, user)
-- **4 proyectos** en varios estados
-- **12 tareas** distribuidas entre proyectos y usuarios
-- **Comentarios, time entries y notificaciones** para testing
-
-Credenciales de prueba:
-- Admin: `admin@plurall.com` / `password`
-- Manager: `juan.garcia@plurall.com` / `password`
-- User: `maria.rodriguez@plurall.com` / `password`
-
-## ✅ Checklist de Entrega
-
-**Funcionalidad Básica:**
-- [ ] Proyecto ejecuta sin errores (`npm run dev`)
-- [ ] Todos los endpoints existentes funcionan correctamente
-- [ ] Base de datos se conecta y consultas básicas funcionan
-- [ ] Autenticación JWT funcional
-
-**Performance y SQL:**
-- [ ] Queries optimizadas documentadas con EXPLAIN ANALYZE
-- [ ] Índices agregados con justificación
-- [ ] Paginación implementada en listados
-- [ ] Reportes con agregaciones complejas
-
-**Nuevas Funcionalidades:**
-- [ ] Al menos 4 endpoints nuevos implementados
-- [ ] Sistema de notificaciones funcional
-- [ ] Exportación de datos a CSV
-- [ ] Validaciones robustas con manejo de errores
-
-**Entrega:**
-- [ ] Repositorio público en GitHub O archivo ZIP
-
-## 🚀 Comandos Útiles
-
-```bash
-# Desarrollo
-npm run dev          # Servidor con hot reload
-npm start            # Servidor de producción
-npm run lint         # Verificar código
-npm run format       # Formatear código
-
-
-# Base de datos
-psql -d plurall_test -c "EXPLAIN ANALYZE SELECT ..."
-psql -d plurall_test -f your-migration.sql
 ```
 
-## 📝 Notas Importantes
+> En local (sin Docker), cambia `DB_HOST=localhost`.
 
-- **El proyecto debe funcionar completamente** - Todos los endpoints deben responder correctamente
-- **Performance es clave** - Documenta las optimizaciones SQL realizadas
-- **Agrega valor** - Implementa funcionalidades adicionales que demuestren tu nivel
-- **Documenta decisiones** - Explica por qué elegiste ciertas tecnologías o approaches
+---
 
-**¡Éxito en tu prueba técnica!** 🚀
+## 🐳 Levantar con Docker (desarrollo)
+
+1. **Primera vez** (para correr migraciones/seeds automáticamente):
+
+```bash
+docker compose down -v
+docker compose up -d db
+# espera a que db esté healthy
+docker compose up -d api
+```
+
+2. Ver estado y logs:
+
+```bash
+docker compose ps -a
+docker compose logs -f db
+docker compose logs -f api
+```
+
+3. Verifica API:
+
+```bash
+curl -i http://localhost:3000/
+```
+
+---
+
+## 🗃️ Migraciones / Init de BD
+
+Los `.sql` en `database/` se ejecutan automáticamente **solo** cuando el volumen está vacío.
+
+- `00_extensions.sql`: `pg_stat_statements`, `pg_trgm`, etc.
+- `01_schema.sql`: tablas (`users`, `projects`, `tasks`, `task_comments`, `notifications`, …).
+- `02_seed.sql`: datos de ejemplo (opcional).
+- `03_indexes.sql`: índices y optimizaciones (ver sección Performance).
+
+**Re-aplicar sin borrar volumen**:
+
+```bash
+cat database/00_extensions.sql | docker compose exec -T db psql -U appuser -d plurall_test -v ON_ERROR_STOP=1 -f -
+cat database/01_schema.sql     | docker compose exec -T db psql -U appuser -d plurall_test -v ON_ERROR_STOP=1 -f -
+cat database/02_seed.sql       | docker compose exec -T db psql -U appuser -d plurall_test -v ON_ERROR_STOP=1 -f -   # si aplica
+cat database/03_indexes.sql    | docker compose exec -T db psql -U appuser -d plurall_test -v ON_ERROR_STOP=1 -f -
+docker compose exec -T db psql -U appuser -d plurall_test -c "VACUUM (ANALYZE);"
+```
+
+**Comandos útiles**:
+
+```bash
+# Extensiones instaladas
+docker compose exec -T db psql -U appuser -d plurall_test -c "\dx"
+
+# Tablas
+docker compose exec -T db psql -U appuser -d plurall_test -c "\dt"
+
+# Índices
+docker compose exec -T db psql -U appuser -d plurall_test -c "
+SELECT indexname, tablename FROM pg_indexes
+WHERE schemaname='public' AND tablename IN ('users','tasks','notifications')
+ORDER BY 2,1;"
+```
+
+---
+
+## 📚 Documentación (Swagger)
+
+- **Swagger UI**: `http://localhost:3000/api/docs`
+- Archivo fuente: `openapi.yaml` (incluye **auth**, **reports**, **notification**, **project**, **tasks**).
+
+---
+
+## 🔐 Autenticación
+
+- Regístrate / inicia sesión para obtener **token JWT**.
+- En endpoints protegidos incluir:
+
+```
+Authorization: Bearer <TOKEN>
+```
+
+**Ejemplos**:
+
+```bash
+# register
+curl -s -X POST http://localhost:3000/api/auth/register   -H 'Content-Type: application/json'   -d '{"username":"demo","email":"demo@example.com","password":"Secret123!","first_name":"Demo","last_name":"User"}'
+
+# login
+curl -s -X POST http://localhost:3000/api/auth/login   -H 'Content-Type: application/json'   -d '{"email":"demo@example.com","password":"Secret123!"}'
+
+# profile
+curl -s http://localhost:3000/api/auth/profile   -H "Authorization: Bearer <TOKEN>"
+```
+
+---
+
+## 🔎 Endpoints
+
+**Auth**
+| Method | Path | Description |
+| ------ | -------------------- | ---------------------------------------------------- |
+| POST | `/api/auth/register` | Register user |
+| POST | `/api/auth/login` | Login user (JWT) |
+| GET | `/api/auth/profile` | Get current profile |
+| GET | `/api/users/search`. | Search users (q, role, is_active, page, limit, sort) |
+
+**Task**
+| Method | Path | Description |
+| ------ | ------------------------------ | ---------------------------------- |
+| POST | `/api/tasks` | Create task |
+| GET | `/api/tasks` | List tasks (filters + pagination) |
+| GET | `/api/tasks/{id}` | Get task by ID (includes comments) |
+| PATCH | `/api/tasks/{id}` | Update task (partial) |
+| DELETE | `/api/tasks/{id}` | Delete task |
+| POST | `/api/tasks/{id}/comments` | Add comment to task |
+
+**Projects**
+| Method | Path | Description |
+| ------ | ------------------------------------ | ------------------------------- |
+| GET | `/api/projects/{id}/stats` | Dasboard reports |
+| GET | `/api/reports/productivity` | Productivity report by user |
+| GET | `/api/reports/projects` | Project report |
+| GET | `/api/reports/user-ranking` | User ranking |
+| GET | `/api/reports/project-timeline` | Project timeline |
+| GET | `/api/reports/workload-distribution` | Workload distribution |
+| POST | `/api/reports/export-data` | export data |
+| POST | `/api/reports/import-tasks` | import data |
+
+**Reports**
+| Method | Path | Description |
+| ------ | --------------------------- | -------------------------------------- |
+| GET | `/api/reports/user-ranking` | User ranking (start, end, page, limit) |
+
+**Notifications**
+| Method | Path | Description |
+| ------ | ----------------------------------- | --------------------------------------------- |
+| GET | `/api/notifications` | List notifications (page, limit, only_unread) |
+| PATCH | `/api/notifications/{id}/read` | Mark one notification as read |
+| POST | `/api/notifications/read` | Mark many or all as read (`ids[]`/`all`) |
+| GET | `/api/notifications/preferences/me` | Get notification preferences |
+| PUT | `/api/notifications/preferences/me` | Upsert notification preferences |
+PUT | `/api/notifications/template` | Create customs template for notifications |
+
+**Docs**
+| Method | Path | Description |
+| ------ | --------------- | ------------------- |
+| GET | `/api/docs` | Swagger UI |
+| GET | `/openapi.yaml` | OpenAPI spec (YAML) |
+
+---
+
+## 📄 Paginación
+
+Convención `page`/`limit` (por defecto `page=1`, `limit=20`). Respuesta típica:
+
+```json
+{
+  "success": true,
+  "total": 42,
+  "total_pages": 3,
+  "page": 1,
+  "limit": 20,
+  "items": [ ... ]
+}
+```
+
+---
+
+## 🧪 Tests
+
+```bash
+npm test
+# con cobertura
+npm run test
+```
+
+- Tests unitarios para **repositorios** (mockeando `query`).
+- Controladores y servicios con **mocks** de dependencias.
+- Validamos que las **consultas SQL** generadas (strings) cumplan el patrón esperado.
+
+---
+
+## 🧰 Scripts npm
+
+```bash
+npm run dev        # nodemon
+npm run start      # node src/server.js
+npm run lint       # eslint .
+npm run lint:fix
+npm run format     # prettier --write .
+npm run format:check
+npm run test
+```
+
+> En Docker el build usa `--ignore-scripts` para evitar `husky` en instalaciones.
+
+---
+
+## 📈 Performance & SQL
+
+### Índices creados (extracto)
+
+**tasks**
+
+```sql
+CREATE INDEX IF NOT EXISTS idx_tasks_status         ON tasks(status);
+CREATE INDEX IF NOT EXISTS idx_tasks_priority       ON tasks(priority);
+CREATE INDEX IF NOT EXISTS idx_tasks_assigned_to    ON tasks(assigned_to);
+CREATE INDEX IF NOT EXISTS idx_tasks_project_id     ON tasks(project_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_project_status ON tasks(project_id, status);
+CREATE INDEX IF NOT EXISTS idx_tasks_created_at     ON tasks(created_at);
+-- Opcional cursor:
+-- CREATE INDEX IF NOT EXISTS idx_tasks_created_id ON tasks(created_at, id);
+```
+
+**users**
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower_unique ON users (LOWER(email));
+CREATE INDEX IF NOT EXISTS idx_users_role       ON users(role);
+CREATE INDEX IF NOT EXISTS idx_users_is_active  ON users(is_active);
+CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
+CREATE INDEX IF NOT EXISTS idx_users_username_trgm ON users USING gin (LOWER(username) gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_users_email_trgm    ON users USING gin (LOWER(email) gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_users_fname_trgm    ON users USING gin (LOWER(first_name) gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_users_lname_trgm    ON users USING gin (LOWER(last_name) gin_trgm_ops);
+```
+
+**notifications**
+
+```sql
+CREATE INDEX IF NOT EXISTS idx_notif_user_created ON notifications(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notif_user_unread  ON notifications(user_id, is_read, created_at DESC);
+```
+
+### Cambios en consultas (highlights)
+
+- **Listado de tareas**: split en **2 consultas** (COUNT simple + DATA con JOINs y paginación) → menor costo y mejor uso de índices.
+- **Top contributors**: `JOIN users u ON u.id = t.assigned_to` y filtro por `project_id` + `status='done'`.
+- **User ranking**: paginado, `ROUND(...::numeric,2)` para evitar `round(double precision, int)`.
+
+### Medición con `pg_stat_statements`
+
+`docker-compose.yml` habilita:
+
+```
+shared_preload_libraries=pg_stat_statements
+pg_stat_statements.track=all
+```
+
+Consultas útiles:
+
+```sql
+-- top por tiempo total
+SELECT
+  round((total_plan_time + total_exec_time)::numeric,2) AS total_ms,
+  calls,
+  round(mean_exec_time::numeric,2) AS mean_exec_ms,
+  query
+FROM pg_stat_statements
+ORDER BY (total_plan_time + total_exec_time) DESC
+LIMIT 10;
+
+-- resetear
+SELECT pg_stat_statements_reset();
+
+-- plan puntual
+EXPLAIN (ANALYZE, BUFFERS) <tu_query>;
+```
+
+---
+
+## 🧱 Troubleshooting
+
+- **401 “Token de acceso requerido”** → Falta `Authorization: Bearer <TOKEN>`.
+- **Violación FK al crear tarea** → `created_by/assigned_to/project_id` no existen en la DB actual. Usa token emitido en este entorno o agrega seeds.
+- **Swagger “Could not resolve reference”** → Falta `#/components/schemas/ErrorResponse` o path mal escrito (`projects` vs `project`).
+- **`round(double precision, integer) does not exist`** → castea a `numeric` antes de `ROUND(..., 2)`.
+- **Build Docker falla con `npm ci`** → sincroniza `package-lock.json` con `package.json` (`npm install` local y commitea el lock).
+
+---
+
+## 🔒 Seguridad
+
+- Nunca subas llaves reales a `.env`, `.env.example` o commits.
+- GitHub Push Protection puede bloquear pushes con posibles secretos. Usa **placeholders**.
+
+---
+
+## ✅ Checklist
+
+- [ ] `.env` creado
+- [ ] Docker levantado (`db` healthy → `api`)
+- [ ] `openapi.yaml` válido y Swagger accesible
+- [ ] Registro/Login y `profile` OK
+- [ ] `/api/users/search` y `/api/projects/{id}/stats` operativos
+- [ ] `/api/reports/user-ranking` paginado y sin errores de `ROUND`
+- [ ] Tests verdes: `npm test`
+
+---
+
+## 🚀 CI/CD with GitHub Actions
+
+This project uses **GitHub Actions** to automate:
+
+- **CI (Continuous Integration)**:
+  - Install dependencies
+  - Run unit tests
+  - Validate coverage
+
+- **CD (Continuous Deployment)**:
+  - Automatic deployment to DEV.
+
+### Main workflows:
+
+- `.github/workflows/ci-develop.yml` → runs on PRs into `develop`
+
+---
+
+## 🤖 IA y Live Coding — Reporte de Uso de IA
+
+> **Resumen:** El diseño funcional, las decisiones arquitectónicas y la validación de calidad fueron **lideradas por el desarrollador** (definición de endpoints, contratos, flujos de autenticación, paginación, mapeo de errores y criterios de performance). **La IA (ChatGPT · GPT-5 Thinking)** se utilizó como **acelerador** para generar borradores, alternativas de solución y documentación; todas las propuestas fueron **revisadas, ajustadas y validadas** manualmente con pruebas, logs y mediciones en Postgres.
+
+### 🧰 Herramientas específicas
+
+- **ChatGPT**: _GPT-5 Thinking_ (asistente de apoyo).
+- **Entorno**: Node.js 20, Jest, Docker Compose, PostgreSQL 16.
+- _(No se utilizaron en esta entrega)_ Claude, Copilot.
+
+### 🪟 Ventana de contexto utilizada (estimado)
+
+- Prompts/respuestas con **1–3k tokens** en iteraciones de diagnóstico (Docker, SQL, tests).
+- Historial largo y encadenado por tema (Docker → API → SQL → Tests → Docs).
+- **Nota**: sin reporte exacto de tokens; se documentan estimaciones razonables.
+
+### 🔢 Consumo estimado de tokens (aprox.)
+
+| Área                                    | Interacciones | Tokens aprox. |
+| --------------------------------------- | ------------- | ------------- |
+| Docker & entorno (builds, npm, runtime) | 10–16         | 10k–16k       |
+| SQL & performance (EXPLAIN, índices)    | 10–14         | 10k–16k       |
+| API & OpenAPI/Swagger                   | 6–10          | 6k–10k        |
+| Tests (Jest, repos, controladores)      | 9–12          | 7k–12k        |
+| README & Docs                           | 3–6           | 3k–6k         |
+| **Total estimado**                      | **38–58**     | **36k–60k**   |
+
+> _Las cifras son aproximadas; el foco estuvo en minimizar iteraciones mediante prompts con evidencia (logs, SQL real)._
+
+### 🔀 Distribución del código (estimado)
+
+- **Código humano**: **~65%**
+  - Definición de **requisitos** y **contratos** (endpoints, validaciones y respuestas).
+  - Diseño de **estrategias de paginación** y **mapeo de errores** (p.ej., FK → 400 con mensaje claro).
+  - Ajuste fino de **consultas SQL** al esquema real y revisión de planes/estadísticas.
+  - Integración con **Docker**, variables de entorno, y diagnóstico de fallos runtime.
+  - Revisión, endurecimiento y alineación de **tests** con el código real.
+- **Código asistido por IA**: **~35%**
+  - Borradores de controladores/servicios/repos para endpoints nuevos.
+  - Plantillas de tests (mocks de `query`, patrones de expect).
+  - Propuestas de optimización (separar COUNT/DATA, índices, casting/rounding).
+  - Redacción inicial de documentación (README, tablas de endpoints, bloques YAML).
+
+**Justificación de distribución:** se priorizó que la **lógica de dominio, decisiones técnicas y validación** queden en manos del desarrollador. La IA se usó para **acelerar** el andamiaje y la documentación, evitando trabajo mecánico y concentrando el tiempo en el análisis y la calidad.
+
+### 🧪 Delegación de tareas
+
+- **Delegado a IA**: borradores (controller/service/repo), esqueletos de tests y documentación; sugerencias de índices y estrategias de SQL/paginación.
+- **Manual (desarrollador)**: integración real, validación con `curl`/logs/psql, fijado de errores (`ERR_MODULE_NOT_FOUND`, `res.status`, npm/husky/lockfile), alineación con esquema real, tuning de consultas y verificación con `pg_stat_statements` y `EXPLAIN (ANALYZE)`.
+
+### 🧭 Metodología de trabajo asistido
+
+- **Estrategia de prompting**
+  - _Context-first_: siempre incluir logs completos y SQL real.
+  - _Iterativo y acotado_: cambios incrementales y verificables.
+  - _Evidence-driven_: cada iteración parte de un error o medición concreta.
+- **Estructura conversacional**
+  - Hilos por tema (Docker, API, SQL, Tests, Docs) con ciclos _proponer → ejecutar → medir → corregir_.
+- **Técnicas de refinamiento**
+  - _Few-shot_ ligero con ejemplos de tests existentes.
+  - Salidas **constriñidas** (solo bloque/diff) para reducir ruido.
+  - Ajustes hasta pasar tests y métricas.
+
+### 💬 Prompts clave (ejemplos)
+
+- “Corrige `npm ci EUSAGE` con multi-stage y lockfile sync en Dockerfile; evita husky en build.”
+- “`TypeError: res.status is not a function` en `errorHandler`; ajusta middleware a 4 args.”
+- “Agrega `GET /api/users/search` y `GET /api/projects/{id}/stats` con repos, servicios, validaciones y rutas.”
+- “Optimiza listados separando COUNT simple y DATA con JOINs; sugiere índices y valida con `pg_stat_statements`.”
+- “`round(double precision, int)` falla; castea a numeric y ajusta `user-ranking` con paginación.”
+- “Actualiza tests para repos (Task/User/Project/Notification) asegurando patrón SQL y resultados.”
+
+### 🧩 Decisiones técnicas influenciadas por IA
+
+- **Docker**: multi-stage, `npm ci --ignore-scripts`, mejor caché y builds reproducibles.
+- **Express**: manejo de errores consistente (middleware 4 args) y respuestas `{ error, details }`.
+- **SQL/Índices**: COUNT vs DATA, índices por filtros de uso real (`project_id,status`, `assigned_to,created_at`, `pg_trgm` para búsqueda).
+- **Observabilidad**: habilitar `pg_stat_statements` en compose y consultas de análisis incluidas en README.
+- **OpenAPI/Docs**: esquemas de error reutilizables y ejemplos realistas por endpoint.
+
+### 🎯 Criterios del challenge (cómo se cumplieron)
+
+- **Optimización del uso de IA**: prompts con evidencia → menos iteraciones y respuestas más precisas.
+- **Conocimiento de limitaciones**: verificación estricta contra el esquema y ejecución real.
+- **Productividad**: aceleración de documentación/tests, sin sacrificar calidad.
+- **Criterio técnico**: revisión de planes/métricas, endurecimiento de tests y manejo de errores de negocio.
+
+### ⚡ Bonus
+
+- _Few-shot prompting_ para tests.
+- Documentación generada y normalizada con ejemplos.
+- Optimización de SQL asistida por IA y validada con `pg_stat_statements` + `EXPLAIN (ANALYZE)`.

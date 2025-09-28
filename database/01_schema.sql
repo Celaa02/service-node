@@ -147,3 +147,36 @@ CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
 -- Problema intencional: Faltan triggers para otras tablas
 -- CREATE TRIGGER update_projects_updated_at BEFORE UPDATE ON projects...
 -- CREATE TRIGGER update_tasks_updated_at BEFORE UPDATE ON tasks...
+
+-- notifications (una por evento)
+CREATE TABLE IF NOT EXISTS notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL,
+  type TEXT NOT NULL,
+  title TEXT NOT NULL,
+  body TEXT NOT NULL,
+  metadata JSONB DEFAULT '{}'::jsonb,
+  is_read BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- preferencias por usuario
+CREATE TABLE IF NOT EXISTS notification_preferences (
+  user_id UUID PRIMARY KEY,
+  email_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  push_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  inapp_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  -- por tipo (override por evento):
+  per_type JSONB NOT NULL DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- templates de email (por tipo/locale)
+CREATE TABLE IF NOT EXISTS notification_templates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  type TEXT NOT NULL,
+  locale TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  html TEXT NOT NULL,
+  UNIQUE(type, locale)
+);

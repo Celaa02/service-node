@@ -1,134 +1,77 @@
-import { query } from '../config/database.js'
-import bcrypt from 'bcryptjs'
-import { generateToken } from '../middleware/auth.js'
-import logger from '../utils/logger.js'
+import {
+  registerUser,
+  loginUser,
+  getProfile,
+  searchUsersService,
+} from '../services/authService.js';
+import logger from '../utils/logger.js';
+import { usersSearchQuerySchema } from '../services/validations/user.schema.js';
 
 export const register = async (req, res) => {
   try {
-    const { username, email, password, first_name, last_name } = req.body
-
-    if (!username || !email || !password) {
-      return res.status(400).json({ error: 'Faltan campos requeridos' })
-    }
-
-    if (password.length < 6) {
-      return res.status(400).json({ error: 'Contraseña debe tener al menos 6 caracteres' })
-    }
-
-    const existingUserQuery = 'SELECT id FROM users WHERE email = $1 OR username = $2'
-    const existingUser = await query(existingUserQuery, [email, username])
-
-    if (existingUser.rows.length > 0) {
-      return res.status(400).json({ error: 'Usuario o email ya existe' })
-    }
-
-    const saltRounds = 8
-    const passwordHash = await bcrypt.hash(password, saltRounds)
-
-    const insertUserQuery = `
-      INSERT INTO users (username, email, password_hash, first_name, last_name)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING id, username, email, first_name, last_name, role, created_at
-    `
-
-    const result = await query(insertUserQuery, [username, email, passwordHash, first_name, last_name])
-    const user = result.rows[0]
-
-    const token = generateToken(user)
-    logger.info(`Nuevo usuario registrado: ${username}`)
-
-    res.status(201).json({
-      success: true,
-      message: 'Usuario registrado exitosamente',
-      user,
-      token
-    })
-  } catch (error) {
-    logger.error('Error en registro:', error.message)
-    res.status(500).json({ error: error.message })
+    const { username, email, password, first_name, last_name, role } = req.body;
+    const { user, token } = await registerUser({
+      username,
+      email,
+      password,
+      first_name,
+      last_name,
+      role,
+    });
+    return res
+      .status(201)
+      .json({ success: true, message: 'Usuario registrado exitosamente', user, token });
+  } catch (err) {
+    logger.error('Error en register:', err.message);
+    return res
+      .status(err.status || 500)
+      .json({ error: err.status ? err.message : 'Error interno del servidor' });
   }
-}
+};
 
 export const login = async (req, res) => {
   try {
-    // const hash = await bcrypt.hash('password', 8);
-    // console.log("🚀 ~ getProfile ~ hash:", hash)
-  
-    const { email, password } = req.body
-
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email y contraseña requeridos' })
-    }
-
-    const userQuery = `
-      SELECT id, username, email, password_hash, role, first_name, last_name, is_active
-      FROM users
-      WHERE email = $1
-    `
-
-    const result = await query(userQuery, [email])
-
-    if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'No existe usuario con ese email' })
-    }
-
-    const user = result.rows[0]
-
-    if (!user.is_active) {
-      return res.status(401).json({ error: 'Cuenta desactivada' })
-    }
-
-    const isPasswordValid = await bcrypt.compare(password, user.password_hash)
-
-    if (!isPasswordValid) {
-      return res.status(401).json({ error: 'Contraseña incorrecta' })
-    }
-
-    const token = generateToken(user)
-    logger.info(`Usuario ${user.username} inició sesión`)
-
-    res.json({
-      success: true,
-      message: 'Login exitoso',
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        password_hash: user.password_hash
-      },
-      token
-    })
-  } catch (error) {
-    logger.error('Error en login:', error.message)
-    res.status(500).json({ error: 'Error interno del servidor' })
+    const { email, password } = req.body;
+    const { user, token } = await loginUser({ email, password });
+    return res.json({ success: true, message: 'Login exitoso', user, token });
+  } catch (err) {
+    logger.error('Error en login:', err.message);
+    return res
+      .status(err.status || 500)
+      .json({ error: err.status ? err.message : 'Error interno del servidor' });
   }
-}
+};
 
-export const getProfile = async (req, res) => {
+export const profile = async (req, res) => {
   try {
-    const userQuery = `
-      SELECT id, username, email, first_name, last_name, role, is_active,
-             email_verified, last_login, created_at
-      FROM users
-      WHERE id = $1
-    `
-
-    const result = await query(userQuery, [req.user.userId])
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Usuario no encontrado' })
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(400).json({ error: 'ID de usuario requerido' });
     }
-
-    res.json({
-      success: true,
-      user: result.rows[0]
-    })
-  } catch (error) {
-    logger.error('Error obteniendo perfil:', error.message)
-    res.status(500).json({ error: 'Error interno del servidor' })
+    const user = await getProfile({ userId });
+    return res.json({ success: true, user });
+  } catch (err) {
+    logger.error('Error obteniendo perfil:', err.message);
+    return res
+      .status(err.status || 500)
+      .json({ error: err.status ? err.message : 'Error interno del servidor' });
   }
-}
+};
 
+export const searchUsers = async (req, res, next) => {
+  try {
+    const { error } = usersSearchQuerySchema.validate(req.query);
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        error: 'Campos invalidos',
+        details: error.details.map((d) => d.message),
+      });
+    }
+    const result = await searchUsersService(req.query);
+    return res.json(result);
+  } catch (err) {
+    logger.error('searchUsers error:', err.message);
+    next(err);
+  }
+};
