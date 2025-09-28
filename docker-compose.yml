@@ -1,0 +1,37 @@
+version: '3.9'
+
+services:
+  api:
+    build:
+      context: .
+    env_file: .env
+    environment:
+      NODE_ENV: development
+      PORT: ${PORT:-3000}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://appuser:appsecret@db:5432/plurall_test}
+      JWT_SECRET: ${JWT_SECRET:-dev_secret}
+      CHOKIDAR_USEPOLLING: '1'
+    ports:
+      - '${PORT:-3000}:${PORT:-3000}'
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+    command: sh -lc "npm run dev -- -L"
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-plurall_test}
+      POSTGRES_USER: ${POSTGRES_USER:-appuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-appsecret}
+    ports:
+      - '5432:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-appuser} -d ${POSTGRES_DB:-plurall_test}']
+      interval: 5s
+      timeout: 3s
+      retries: 20
