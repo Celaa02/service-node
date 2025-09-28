@@ -19,6 +19,6 @@ router.get('/:id', authenticateToken, getTaskById);
 router.put('/:id', authenticateToken, updateTask);
 router.delete('/:id', authenticateToken, deleteTask);
 
-router.post('/:id/comments', addComment);
+router.post('/:id/comments', authenticateToken, addComment);
 
 export default router;

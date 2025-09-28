@@ -1,5 +1,8 @@
 import { TaskRepositoryPg } from '../infrastructure/persistence/pg/TaskRepositoryPg.js';
 import logger from '../utils/logger.js';
+import { notifyUser } from '../services/notificationService.js';
+import { io } from '../server.js';
+import { sendMail } from '../utils/mailer.js';
 
 const repo = new TaskRepositoryPg();
 
@@ -25,6 +28,17 @@ export const createTaskService = async (payload) => {
       priority,
       due_date,
       estimated_hours,
+    });
+
+    await notifyUser({
+      userId: assigned_to,
+      type: 'task_assigned',
+      title,
+      message: 'Preparar informe',
+      related_id: created_by,
+      is_read: false,
+      io,
+      sendMail,
     });
 
     return task;
@@ -70,6 +84,16 @@ export const getTaskByIdService = async ({ id }) => {
 export const updateTaskService = async ({ id, patch }) => {
   try {
     const updated = await repo.update(id, patch);
+    await notifyUser({
+      userId: updated.assigned_to,
+      type: 'task_completed',
+      title: updated.title,
+      message: updated.description,
+      related_id: updated.created_by,
+      is_read: false,
+      io,
+      sendMail,
+    });
     return updated;
   } catch (error) {
     logger.error('Error en service updateTaskService:', error.message);
@@ -90,6 +114,18 @@ export const deleteTaskService = async ({ id }) => {
 export const addCommentService = async ({ task_id, user_id, content }) => {
   try {
     const comment = await repo.addComment(task_id, user_id, String(content).trim());
+
+    await notifyUser({
+      userId: user_id,
+      type: 'comment_added',
+      title: 'comment task',
+      message: comment.content,
+      related_id: task_id,
+      is_read: false,
+      io,
+      sendMail,
+    });
+
     return comment;
   } catch (error) {
     logger.error('Error en service addCommentService:', error.message);

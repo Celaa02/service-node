@@ -26,6 +26,7 @@ export default {
     '/src/domain/repositories',
     '/src/domain/models',
     '/src/utils/logger.js',
+    '/src/utils/mailer.js',
     '/src/middleware/rateLimiter.js',
   ],
 };

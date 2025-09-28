@@ -21,6 +21,7 @@ export const createTask = async (req, res) => {
     }
     const task = await createTaskService({ ...req.body, created_by });
     logger.info(`Nueva tarea creada: ${task?.title ?? task?.id}`);
+
     return res.status(201).json({ success: true, message: 'Tarea creada exitosamente', task });
   } catch (err) {
     logger.error('createTask:', err.message);

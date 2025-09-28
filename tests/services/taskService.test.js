@@ -12,10 +12,24 @@ const repoMock = {
   remove: jest.fn(),
   addComment: jest.fn(),
 };
-
 const TaskRepositoryPg = jest.fn(() => repoMock);
 jest.unstable_mockModule('../../src/infrastructure/persistence/pg/TaskRepositoryPg.js', () => ({
   TaskRepositoryPg,
+}));
+
+const notifyUserMock = jest.fn();
+jest.unstable_mockModule('../../src/services/notificationService.js', () => ({
+  notifyUser: notifyUserMock,
+}));
+
+const ioMock = { __tag: 'io' };
+jest.unstable_mockModule('../../src/server.js', () => ({
+  io: ioMock,
+}));
+
+const sendMailMock = jest.fn();
+jest.unstable_mockModule('../../src/utils/mailer.js', () => ({
+  sendMail: sendMailMock,
 }));
 
 const {
@@ -30,13 +44,15 @@ const {
 const resetAll = () => {
   jest.clearAllMocks();
   for (const k of Object.keys(repoMock)) repoMock[k].mockReset();
+  notifyUserMock.mockReset();
+  sendMailMock.mockReset();
 };
 
 describe('taskService', () => {
   beforeEach(resetAll);
 
   describe('createTaskService', () => {
-    it('usa assigned_to si viene; no lo sobreescribe', async () => {
+    it('usa assigned_to si viene; no lo sobreescribe y dispara notifyUser', async () => {
       repoMock.create.mockResolvedValue({ id: 't1' });
 
       const payload = {
@@ -62,10 +78,22 @@ describe('taskService', () => {
         due_date: '2030-01-01',
         estimated_hours: 5,
       });
+
+      expect(notifyUserMock).toHaveBeenCalledWith({
+        userId: 'user-x',
+        type: 'task_assigned',
+        title: 'A',
+        message: 'Preparar informe',
+        related_id: 'user-y',
+        is_read: false,
+        io: ioMock,
+        sendMail: sendMailMock,
+      });
+
       expect(out).toEqual({ id: 't1' });
     });
 
-    it('si no hay assigned_to, usa created_by', async () => {
+    it('si no hay assigned_to, usa created_by (solo para crear la tarea)', async () => {
       repoMock.create.mockResolvedValue({ id: 't2' });
 
       const out = await createTaskService({
@@ -77,12 +105,13 @@ describe('taskService', () => {
         title: 'B',
         description: undefined,
         project_id: undefined,
-        assigned_to: 'owner-1', // fallback
+        assigned_to: 'owner-1',
         created_by: 'owner-1',
         priority: undefined,
         due_date: undefined,
         estimated_hours: undefined,
       });
+
       expect(out).toEqual({ id: 't2' });
     });
 
@@ -145,11 +174,32 @@ describe('taskService', () => {
   });
 
   describe('updateTaskService', () => {
-    it('retorna actualizado', async () => {
-      repoMock.update.mockResolvedValue({ id: 't1', status: 'done' });
+    it('retorna actualizado y dispara notifyUser con datos del update', async () => {
+      const updated = {
+        id: 't1',
+        title: 'Tarea 1',
+        description: 'desc',
+        assigned_to: 'user-2',
+        created_by: 'user-creator',
+        status: 'done',
+      };
+      repoMock.update.mockResolvedValue(updated);
+
       const out = await updateTaskService({ id: 't1', patch: { status: 'done' } });
+
       expect(repoMock.update).toHaveBeenCalledWith('t1', { status: 'done' });
-      expect(out).toEqual({ id: 't1', status: 'done' });
+      expect(out).toEqual(updated);
+
+      expect(notifyUserMock).toHaveBeenCalledWith({
+        userId: 'user-2',
+        type: 'task_completed',
+        title: 'Tarea 1',
+        message: 'desc',
+        related_id: 'user-creator',
+        is_read: false,
+        io: ioMock,
+        sendMail: sendMailMock,
+      });
     });
 
     it('loggea y propaga error', async () => {
@@ -184,17 +234,28 @@ describe('taskService', () => {
   });
 
   describe('addCommentService', () => {
-    it('convierte a string y hace trim del content', async () => {
-      repoMock.addComment.mockResolvedValue({ id: 'c1', content: '123' });
+    it('convierte a string, hace trim y dispara notifyUser', async () => {
+      repoMock.addComment.mockResolvedValue({ id: 'c1', content: 'hola' });
 
       const out = await addCommentService({
         task_id: 't1',
         user_id: 'u1',
-        content: 123,
+        content: '  hola  ',
       });
 
-      expect(repoMock.addComment).toHaveBeenCalledWith('t1', 'u1', '123');
-      expect(out).toEqual({ id: 'c1', content: '123' });
+      expect(repoMock.addComment).toHaveBeenCalledWith('t1', 'u1', 'hola');
+      expect(out).toEqual({ id: 'c1', content: 'hola' });
+
+      expect(notifyUserMock).toHaveBeenCalledWith({
+        userId: 'u1',
+        type: 'comment_added',
+        title: 'comment task',
+        message: 'hola',
+        related_id: 't1',
+        is_read: false,
+        io: ioMock,
+        sendMail: sendMailMock,
+      });
     });
 
     it('loggea y propaga error', async () => {
