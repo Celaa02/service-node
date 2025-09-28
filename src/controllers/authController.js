@@ -1,5 +1,11 @@
-import { registerUser, loginUser, getProfile } from '../services/authService.js';
+import {
+  registerUser,
+  loginUser,
+  getProfile,
+  searchUsersService,
+} from '../services/authService.js';
 import logger from '../utils/logger.js';
+import { usersSearchQuerySchema } from '../services/validations/user.schema.js';
 
 export const register = async (req, res) => {
   try {
@@ -48,5 +54,23 @@ export const profile = async (req, res) => {
     return res
       .status(err.status || 500)
       .json({ error: err.status ? err.message : 'Error interno del servidor' });
+  }
+};
+
+export const searchUsers = async (req, res, next) => {
+  try {
+    const { error } = usersSearchQuerySchema.validate(req.query);
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        error: 'Campos invalidos',
+        details: error.details.map((d) => d.message),
+      });
+    }
+    const result = await searchUsersService(req.query);
+    return res.json(result);
+  } catch (err) {
+    logger.error('searchUsers error:', err.message);
+    next(err);
   }
 };

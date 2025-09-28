@@ -97,3 +97,15 @@ export const getProfile = async ({ userId }) => {
     created_at: user.created_at,
   };
 };
+
+export const searchUsersService = async (params) => {
+  const { items, total } = await userRepo.searchUsersRepo(params);
+  const page = Number(params.page ?? 1);
+  const limit = Number(params.limit ?? 20);
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+
+  return {
+    data: items,
+    meta: { page, limit, total, totalPages },
+  };
+};

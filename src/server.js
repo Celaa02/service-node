@@ -19,7 +19,8 @@ import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
 import taskRoutes from './routes/tasks.js';
 import reportRoutes from './routes/reports.js';
-import notificationRoutes from './routes/notifications.js'; // ⬅️ NUEVO
+import projectRoutes from './routes/project.js';
+import notificationRoutes from './routes/notifications.js';
 
 import { errorHandler } from './middleware/errorHandler.js';
 import { rateLimiter } from './middleware/rateLimiter.js';
@@ -45,6 +46,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/project', projectRoutes);
 app.use('/api/notifications', notificationRoutes);
 
 app.get('/health', (req, res) => {

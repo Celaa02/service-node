@@ -8,14 +8,23 @@ jest.unstable_mockModule('../../src/utils/logger.js', () => ({
 const registerUser = jest.fn();
 const loginUser = jest.fn();
 const getProfile = jest.fn();
+const searchUsersService = jest.fn();
 
 jest.unstable_mockModule('../../src/services/authService.js', () => ({
   registerUser,
   loginUser,
   getProfile,
+  searchUsersService,
 }));
 
-const { register, login, profile } = await import('../../src/controllers/authController.js');
+const validateMock = jest.fn();
+jest.unstable_mockModule('../../src/services/validations/user.schema.js', () => ({
+  usersSearchQuerySchema: { validate: validateMock },
+}));
+
+const { register, login, profile, searchUsers } = await import(
+  '../../src/controllers/authController.js'
+);
 
 const mockRes = () => {
   const res = {};
@@ -23,10 +32,12 @@ const mockRes = () => {
   res.json = jest.fn().mockReturnValue(res);
   return res;
 };
+const mockNext = () => jest.fn();
 
 describe('Auth Controller (ESM)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    validateMock.mockReset();
   });
 
   describe('register', () => {
@@ -185,6 +196,67 @@ describe('Auth Controller (ESM)', () => {
       expect(loggerMock.error).toHaveBeenCalledWith('Error obteniendo perfil:', 'db down');
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith({ error: 'Error interno del servidor' });
+    });
+  });
+
+  describe('searchUsers', () => {
+    it('200 devuelve resultado del servicio cuando la validación pasa', async () => {
+      const req = { query: { q: 'sofia', page: '1', limit: '5' } };
+      const res = mockRes();
+      const next = mockNext();
+
+      validateMock.mockReturnValue({ error: undefined, value: { q: 'sofia', page: 1, limit: 5 } });
+
+      const svcResult = {
+        data: [{ id: 'u1', username: 'sofia' }],
+        meta: { page: 1, limit: 5, total: 1, totalPages: 1 },
+      };
+      searchUsersService.mockResolvedValue(svcResult);
+
+      await searchUsers(req, res, next);
+
+      expect(validateMock).toHaveBeenCalledWith(req.query);
+      expect(searchUsersService).toHaveBeenCalledWith(req.query);
+      expect(res.json).toHaveBeenCalledWith(svcResult);
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    it('400 si la validación falla', async () => {
+      const req = { query: { page: '0' } };
+      const res = mockRes();
+      const next = mockNext();
+
+      validateMock.mockReturnValue({
+        error: { details: [{ message: '"page" must be greater than or equal to 1' }] },
+      });
+
+      await searchUsers(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        success: false,
+        error: 'Campos invalidos',
+        details: ['"page" must be greater than or equal to 1'],
+      });
+      expect(searchUsersService).not.toHaveBeenCalled();
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    it('propaga error del servicio a next(err) y loggea', async () => {
+      const req = { query: { q: 'x' } };
+      const res = mockRes();
+      const next = mockNext();
+      const boom = new Error('db fail');
+
+      validateMock.mockReturnValue({ error: undefined, value: { q: 'x' } });
+      searchUsersService.mockRejectedValue(boom);
+
+      await searchUsers(req, res, next);
+
+      expect(loggerMock.error).toHaveBeenCalledWith('searchUsers error:', 'db fail');
+      expect(next).toHaveBeenCalledWith(boom);
+      expect(res.status).not.toHaveBeenCalled();
+      expect(res.json).not.toHaveBeenCalled();
     });
   });
 });

@@ -46,4 +46,8 @@ export class UserRepository {
   updateLastLogin() {
     throw new Error('Not implemented');
   }
+  /** @param {string} userId @returns {Promise<void>} */
+  searchUsersRepo() {
+    throw new Error('Not implemented');
+  }
 }

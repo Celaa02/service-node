@@ -32,3 +32,15 @@ export const getProfileParams = Joi.object({
     .try(Joi.string().guid({ version: ['uuidv4', 'uuidv5'] }), Joi.number().integer().positive())
     .required(),
 });
+
+export const usersSearchQuerySchema = Joi.object({
+  q: Joi.string().trim().min(1).max(100).optional(),
+  role: Joi.string().trim().max(50).optional(),
+  is_active: Joi.boolean().optional(),
+  page: Joi.number().integer().min(1).default(1),
+  limit: Joi.number().integer().min(1).max(100).default(20),
+  sort: Joi.string()
+    .trim()
+    .valid('username', '-username', 'email', '-email', 'created_at', '-created_at', 'role', '-role')
+    .default('username'),
+});
