@@ -2,11 +2,11 @@ import { query } from '../../../config/database.js';
 import { TaskRepository } from '../../../domain/repositories/TaskRepository.js';
 
 const SORT_WHITELIST = new Map([
-  ['created_at', 'created_at'],
-  ['updated_at', 'updated_at'],
-  ['due_date', 'due_date'],
-  ['priority', 'priority'],
-  ['status', 'status'],
+  ['created_at', 't.created_at'],
+  ['updated_at', 't.updated_at'],
+  ['due_date', 't.due_date'],
+  ['priority', 't.priority'],
+  ['status', 't.status'],
 ]);
 
 /** @implements {import('../../../domain/repositories/TaskRepository.js').TaskRepository} */
@@ -41,52 +41,50 @@ export class TaskRepositoryPg extends TaskRepository {
       const ord = String(order || 'DESC').toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
       const filters = [];
-      const params = [];
+      const values = [];
       let i = 1;
 
       if (status) {
         filters.push(`t.status = $${i++}`);
-        params.push(status);
+        values.push(status);
       }
       if (priority) {
         filters.push(`t.priority = $${i++}`);
-        params.push(priority);
+        values.push(priority);
       }
       if (assigned_to) {
         filters.push(`t.assigned_to = $${i++}`);
-        params.push(assigned_to);
+        values.push(assigned_to);
       }
       if (project_id) {
         filters.push(`t.project_id = $${i++}`);
-        params.push(project_id);
+        values.push(project_id);
       }
 
-      const where = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
+      const whereSql = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
 
-      const sql = `
-      WITH filtered AS (
-        SELECT
-          t.*,
-          u1.username AS assigned_username,
-          u1.first_name AS assigned_first_name,
-          u1.last_name  AS assigned_last_name,
-          u2.username   AS created_by_username,
-          p.name        AS project_name
-        FROM tasks t
-        LEFT JOIN users u1 ON t.assigned_to = u1.id
-        LEFT JOIN users u2 ON t.created_by = u2.id
-        LEFT JOIN projects p ON t.project_id = p.id
-        ${where}
-      )
+      const totalSql = `SELECT COUNT(*)::int AS total FROM tasks t ${whereSql};`;
+      const { rows: totalRows } = await query(totalSql, values);
+      const total = totalRows[0]?.total ?? 0;
+      const dataSql = `
       SELECT
-        (SELECT COUNT(*)::int FROM filtered) AS total,
-        (SELECT jsonb_agg(row_to_json(x))
-           FROM (SELECT * FROM filtered ORDER BY ${sortCol} ${ord} OFFSET $${i} LIMIT $${i + 1}) x
-        ) AS items;
+        t.*,
+        u1.username AS assigned_username,
+        u1.first_name AS assigned_first_name,
+        u1.last_name  AS assigned_last_name,
+        u2.username   AS created_by_username,
+        p.name        AS project_name
+      FROM tasks t
+      LEFT JOIN users u1 ON t.assigned_to = u1.id
+      LEFT JOIN users u2 ON t.created_by = u2.id
+      LEFT JOIN projects p ON t.project_id = p.id
+      ${whereSql}
+      ORDER BY ${sortCol} ${ord}
+      OFFSET $${i} LIMIT $${i + 1};
     `;
-      params.push(offset, limit);
-      const { rows } = await query(sql, params);
-      return { total: rows[0].total, items: rows[0].items ?? [] };
+      const { rows: items } = await query(dataSql, [...values, offset, limit]);
+
+      return { total, items: items ?? [] };
     } catch (error) {
       throw new Error(error);
     }

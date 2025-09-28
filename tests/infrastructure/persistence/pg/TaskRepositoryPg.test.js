@@ -3,7 +3,7 @@ import { jest } from '@jest/globals';
 const query = jest.fn();
 jest.unstable_mockModule('../../../../src/config/database.js', () => ({ query }));
 
-jest.unstable_mockModule('.../../../../src/domain/repositories/TaskRepository.js', () => ({
+jest.unstable_mockModule('../../../../src/domain/repositories/TaskRepository.js', () => ({
   TaskRepository: class {},
 }));
 
@@ -50,17 +50,13 @@ describe('TaskRepositoryPg', () => {
   });
 
   describe('list', () => {
-    it('construye filtros, orden y paginación (ORDER BY por whitelist) y retorna total/items', async () => {
-      const rows = [
-        {
-          total: 2,
-          items: [
-            { id: 't2', title: 'B', priority: 'high' },
-            { id: 't1', title: 'A', priority: 'high' },
-          ],
-        },
+    it('aplica filtros, orden y paginación con COUNT separado y retorna total/items', async () => {
+      query.mockResolvedValueOnce({ rows: [{ total: 2 }] });
+      const items = [
+        { id: 't2', title: 'B', priority: 'high' },
+        { id: 't1', title: 'A', priority: 'high' },
       ];
-      query.mockResolvedValueOnce({ rows });
+      query.mockResolvedValueOnce({ rows: items });
 
       const result = await repo.list({
         limit: 10,
@@ -73,30 +69,49 @@ describe('TaskRepositoryPg', () => {
         order: 'asc',
       });
 
-      expect(query).toHaveBeenCalledTimes(1);
-      const [sql, params] = query.mock.calls[0];
+      expect(query).toHaveBeenCalledTimes(2);
 
-      expect(sql).toMatch(
-        /WHERE\s+t\.status = \$1\s+AND t\.priority = \$2\s+AND t\.assigned_to = \$3\s+AND t\.project_id = \$4/i,
+      const [countSql, countParams] = query.mock.calls[0];
+      expect(countSql).toMatch(/SELECT COUNT\(\*\)::int AS total FROM tasks t/i);
+      expect(countSql).toMatch(
+        /WHERE t\.status = \$1 AND t\.priority = \$2 AND t\.assigned_to = \$3 AND t\.project_id = \$4/i,
       );
-      expect(sql).toMatch(/ORDER BY\s+priority\s+ASC/i);
-      expect(sql).toMatch(/OFFSET \$5 LIMIT \$6/i);
-      expect(params).toEqual(['pending', 'high', 'u1', 'p1', 20, 10]);
+      expect(countParams).toEqual(['pending', 'high', 'u1', 'p1']);
+
+      const [dataSql, dataParams] = query.mock.calls[1];
+      expect(dataSql).toMatch(/FROM tasks t\s+LEFT JOIN users u1 ON t\.assigned_to = u1\.id/i);
+      expect(dataSql).toMatch(/LEFT JOIN users u2 ON t\.created_by = u2\.id/i);
+      expect(dataSql).toMatch(/LEFT JOIN projects p ON t\.project_id = p\.id/i);
+      expect(dataSql).toMatch(
+        /WHERE t\.status = \$1 AND t\.priority = \$2 AND t\.assigned_to = \$3 AND t\.project_id = \$4/i,
+      );
+      expect(dataSql).toMatch(/ORDER BY t\.priority ASC/i);
+      expect(dataSql).toMatch(/OFFSET \$5 LIMIT \$6/i);
+      expect(dataParams).toEqual(['pending', 'high', 'u1', 'p1', 20, 10]);
 
       expect(result).toEqual({
         total: 2,
-        items: rows[0].items,
+        items,
       });
     });
 
-    it('sin filtros usa ORDER BY created_at DESC y OFFSET/LIMIT como $1 y $2', async () => {
-      query.mockResolvedValueOnce({ rows: [{ total: 0, items: null }] });
+    it('sin filtros: COUNT sin WHERE, ORDER BY t.created_at DESC y OFFSET/LIMIT como $1 y $2', async () => {
+      query.mockResolvedValueOnce({ rows: [{ total: 0 }] });
+      query.mockResolvedValueOnce({ rows: [] });
+
       const res = await repo.list({ limit: 10, offset: 0 });
 
-      const [sql, params] = query.mock.calls[0];
-      expect(sql).toMatch(/ORDER BY\s+created_at\s+DESC/i);
-      expect(sql).toMatch(/OFFSET \$1 LIMIT \$2/i);
-      expect(params).toEqual([0, 10]);
+      expect(query).toHaveBeenCalledTimes(2);
+
+      const [countSql, countParams] = query.mock.calls[0];
+      expect(countSql).toMatch(/SELECT COUNT\(\*\)::int AS total FROM tasks t\s*;?$/i);
+      expect(countParams).toEqual([]);
+
+      const [dataSql, dataParams] = query.mock.calls[1];
+      expect(dataSql).toMatch(/ORDER BY t\.created_at DESC/i);
+      expect(dataSql).toMatch(/OFFSET \$1 LIMIT \$2/i);
+      expect(dataParams).toEqual([0, 10]);
+
       expect(res).toEqual({ total: 0, items: [] });
     });
   });
@@ -108,36 +123,6 @@ describe('TaskRepositoryPg', () => {
       expect(out).toBeNull();
       expect(query).toHaveBeenCalledTimes(1);
     });
-
-    // it('retorna la tarea con comentarios cuando existe', async () => {
-    //   const taskRow = {
-    //     id: 't1',
-    //     title: 'X',
-    //     assigned_to: 'u1',
-    //     assigned_username: 'sofia',
-    //     created_by_username: 'admin',
-    //     project_name: 'Demo',
-    //   };
-    //   const comments = [
-    //     { id: 'c1', task_id: 't1', user_id: 'u1', content: 'hola', username: 'sofia' },
-    //     { id: 'c2', task_id: 't1', user_id: 'u2', content: 'mundo', username: 'carlos' },
-    //   ];
-    //   query.mockResolvedValueOnce({ rows: [taskRow] }).mockResolvedValueOnce({ rows: comments });
-
-    //   const out = await repo.getById('t1');
-
-    //   expect(query).toHaveBeenCalledTimes(2);
-    //   expect(query.mock.calls[0][0]).toMatch(
-    //     /FROM tasks t\s+LEFT JOIN users u1.*LEFT JOIN users u2.*LEFT JOIN projects p/i
-    //   );
-    //   expect(query.mock.calls[0][1]).toEqual(['t1']);
-    //   expect(query.mock.calls[1][0]).toMatch(
-    //     /FROM task_comments tc JOIN users u ON tc\.user_id = u\.id/i
-    //   );
-    //   expect(query.mock.calls[1][1]).toEqual(['t1']);
-
-    //   expect(out).toEqual({ ...taskRow, comments });
-    // });
   });
 
   describe('update', () => {

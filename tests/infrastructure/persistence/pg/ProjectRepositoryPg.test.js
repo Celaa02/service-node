@@ -107,13 +107,11 @@ describe('ProjectRepositoryPg', () => {
 
       expect(query).toHaveBeenCalledTimes(1);
       const sql = query.mock.calls[0][0];
-      // Verifica la forma de la query *actual*
-      expect(sql).toMatch(/FROM tasks t\s+JOIN users u ON u\.id = t\.id/i);
-      expect(sql).toMatch(/WHERE t\.id = \$1 AND t\.status = 'done'/i);
+      expect(sql).toMatch(/FROM tasks t\s+JOIN users u ON u\.id = t\.assigned_to/i);
+      expect(sql).toMatch(/WHERE t\.project_id = \$1 AND t\.status = 'done'/i);
       expect(sql).toMatch(/ORDER BY completed_tasks DESC\s+LIMIT \$2/i);
 
-      // Parám. por defecto: limit=5
-      expect(query.mock.calls[0][1]).toEqual([projectId, 5]);
+      expect(query).toHaveBeenCalledWith(expect.any(String), [projectId, 5]);
       expect(out).toEqual(rows);
     });
 

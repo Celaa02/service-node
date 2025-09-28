@@ -32,15 +32,11 @@ export class ProjectRepositoryPg {
   async getTopContributorsRepo(projectId, limit = 5) {
     const sql = `
     SELECT
-      t.id AS user_id,
-      u.username,
-      u.first_name,
-      u.last_name,
-      COUNT(*)::int AS completed_tasks
+      t.assigned_to AS user_id, u.username, u.first_name, u.last_name, COUNT(*)::int AS completed_tasks
     FROM tasks t
-    JOIN users u ON u.id = t.id
-    WHERE t.id = $1 AND t.status = 'done'
-    GROUP BY t.id, u.username, u.first_name, u.last_name
+    JOIN users u ON u.id = t.assigned_to
+    WHERE t.project_id = $1 AND t.status = 'done'
+    GROUP BY t.assigned_to, u.username, u.first_name, u.last_name
     ORDER BY completed_tasks DESC
     LIMIT $2;
   `;
