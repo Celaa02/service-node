@@ -110,7 +110,6 @@ export const getUserRanking = async (req, res) => {
       limit: Number(limit ?? 10),
       page: Number(page ?? 0),
     });
-    console.log('🚀 ~ getUserRanking ~ ranking:', ranking);
     return res.json({ success: true, ranking });
   } catch (err) {
     logger.error('getUserRanking:', err.message);

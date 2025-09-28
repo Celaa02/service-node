@@ -16,7 +16,6 @@ import {
 export const createTask = async (req, res) => {
   try {
     const created_by = req.user?.userId;
-    console.log('🚀 ~ createTask ~ created_by:', created_by);
     if (!created_by) {
       return res.status(401).json({ error: 'Usuario no autenticado' });
     }
