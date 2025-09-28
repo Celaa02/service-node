@@ -1,13 +1,11 @@
-# Backend – README
-
-⚙️ Services - Core API
+# ⚙️ Services - Core API
 
 ---
 
 ## 🚀 Stack & características
 
 - **Node 20**, **Express**, **ESM**
-- **PostgreSQL 16** + **Redis 7**
+- **PostgreSQL 16**
 - Autenticación **JWT (Bearer)**
 - **Swagger UI** con OpenAPI (`/api/docs`)
 - **Tests** con Jest + Supertest
